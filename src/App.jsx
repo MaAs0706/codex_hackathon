@@ -116,8 +116,14 @@ function App() {
   const complaintDraft = `Subject: Action requested — ${currentAnalysis.category} at ${location || 'public location'}\n\nDear Civic Accessibility Team,\n\nI am reporting a ${currentAnalysis.category.toLowerCase()} at ${location || 'this public location'} (${placeType}).\n\nAccessibility and safety impact: ${currentAnalysis.impact}\n\nPeople affected: ${currentAnalysis.affected}\n\nRequested action: ${currentAnalysis.action}${noteText ? `\n\nAdditional information: ${noteText}` : ''}\n\nPlease acknowledge this report and share the next action planned.\n\nSincerely,\nA concerned citizen`
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession))
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      if (data.session) setView('dashboard')
+    })
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+      if (nextSession) setView((currentView) => currentView === 'home' ? 'dashboard' : currentView)
+    })
     return () => listener.subscription.unsubscribe()
   }, [])
 
@@ -253,6 +259,7 @@ function App() {
     setAuthOpen(false)
     setEmail('')
     setPassword('')
+    setView('dashboard')
   }
 
   async function signOut() {
@@ -395,7 +402,7 @@ function App() {
   return (
     <main>
       <header className="site-header">
-        <button className="brand" type="button" onClick={() => setView('home')} aria-label="AccessLens home">
+        <button className="brand" type="button" onClick={() => setView(session ? 'dashboard' : 'home')} aria-label="AccessLens home">
           AccessLens
         </button>
         {session ? (
