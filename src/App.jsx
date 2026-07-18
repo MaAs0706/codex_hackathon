@@ -19,6 +19,10 @@ function App() {
   const [authMessage, setAuthMessage] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
   const [submitState, setSubmitState] = useState({ status: 'idle', message: '' })
+  const [view, setView] = useState('report')
+  const [myReports, setMyReports] = useState([])
+  const [reportsLoading, setReportsLoading] = useState(false)
+  const [reportsError, setReportsError] = useState('')
 
   function selectPhoto(event) {
     const file = event.target.files?.[0]
@@ -56,6 +60,41 @@ function App() {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    if (!session) {
+      return undefined
+    }
+
+    async function loadReports() {
+      setReportsLoading(true)
+      setReportsError('')
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*, report_updates(*)')
+        .order('created_at', { ascending: false })
+      if (error) {
+        setReportsError(error.message)
+        setReportsLoading(false)
+        return
+      }
+      const reportsWithPhotos = await Promise.all(data.map(async (item) => {
+        if (!item.photo_path) return item
+        const { data: photo } = await supabase.storage.from('report-photos').createSignedUrl(item.photo_path, 3600)
+        return { ...item, photoUrl: photo?.signedUrl }
+      }))
+      setMyReports(reportsWithPhotos)
+      setReportsLoading(false)
+    }
+
+    loadReports()
+    const channel = supabase
+      .channel(`citizen-reports-${session.user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports', filter: `citizen_id=eq.${session.user.id}` }, loadReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'report_updates' }, loadReports)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [session])
+
   async function handleAuth(event) {
     event.preventDefault()
     setAuthBusy(true)
@@ -80,6 +119,7 @@ function App() {
 
   async function signOut() {
     await supabase.auth.signOut()
+    setView('report')
   }
 
   async function submitReport() {
@@ -118,6 +158,7 @@ function App() {
         .single()
       if (reportError) throw reportError
       setSubmitState({ status: 'success', message: `Report submitted. Reference: ${data.id.slice(0, 8).toUpperCase()}` })
+      setView('dashboard')
     } catch (error) {
       setSubmitState({ status: 'error', message: error.message || 'We could not submit your report. Please try again.' })
     }
@@ -126,17 +167,18 @@ function App() {
   return (
     <main>
       <header className="site-header">
-        <a className="brand" href="#top" aria-label="AccessLens home">
+        <button className="brand" type="button" onClick={() => setView('report')} aria-label="AccessLens home">
           <span className="brand-mark">◉</span>
           AccessLens
-        </a>
+        </button>
         {session ? (
-          <button className="account-button" type="button" onClick={signOut}>Sign out</button>
+          <div className="header-actions"><button className="account-button" type="button" onClick={() => setView('dashboard')}>My reports</button><button className="account-button" type="button" onClick={signOut}>Sign out</button></div>
         ) : (
           <button className="account-button" type="button" onClick={() => { setAuthOpen(true); setAuthMessage('') }}>Sign in</button>
         )}
       </header>
 
+      {view === 'report' ? <>
       <section className="hero" id="top">
         <p className="eyebrow">Make access visible</p>
         <h1>One photo can start<br />meaningful action.</h1>
@@ -214,6 +256,24 @@ function App() {
           <article><span>03</span><h3>Act</h3><p>Share a complaint that is ready to send.</p></article>
         </div>
       </section>
+      </> : (
+        <section className="dashboard">
+          <p className="eyebrow">Citizen dashboard</p>
+          <div className="dashboard-heading"><div><h1>My reports</h1><p>Follow each issue from submission to resolution. New updates appear here automatically.</p></div><button className="new-report-button" type="button" onClick={() => setView('report')}>+ New report</button></div>
+          {reportsLoading && <p className="dashboard-note">Loading your reports…</p>}
+          {reportsError && <p className="dashboard-error">{reportsError}</p>}
+          {!reportsLoading && !reportsError && myReports.length === 0 && <div className="no-reports"><span>◉</span><h2>No reports yet</h2><p>When you submit an issue, its progress and any authority remarks will appear here.</p><button type="button" onClick={() => setView('report')}>Create your first report</button></div>}
+          <div className="reports-list">
+            {myReports.map((item) => {
+              const updates = [...(item.report_updates || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              return <article className="report-card" key={item.id}>
+                {item.photoUrl ? <img src={item.photoUrl} alt={`Evidence for ${item.issue_category}`} /> : <div className="photo-missing">No photo</div>}
+                <div className="report-card-content"><div className="report-card-top"><div><p className="eyebrow">{item.place_type}</p><h2>{item.location_name}</h2></div><span className={`status-label ${item.status}`}>{item.status.replace('_', ' ')}</span></div><p className="report-category">{item.issue_category} · {item.severity}</p><p className="report-date">Submitted {new Date(item.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</p><div className="updates"><h3>Updates</h3>{updates.length ? updates.map((update) => <div className="update" key={update.id}><span></span><div>{update.status && <strong>{update.status.replace('_', ' ')}</strong>}<p>{update.remark}</p><time>{new Date(update.created_at).toLocaleString()}</time></div></div>) : <p className="waiting-update">No authority update yet. You’ll see it here as soon as there is one.</p>}</div></div>
+              </article>
+            })}
+          </div>
+        </section>
+      )}
 
       <footer>AccessLens is a civic reporting prototype for more accessible public spaces.</footer>
 
