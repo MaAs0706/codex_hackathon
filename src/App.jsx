@@ -1,121 +1,51 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
+    <main>
+      <header className="site-header">
+        <a className="brand" href="#top" aria-label="AccessLens home">
+          <span className="brand-mark">◉</span>
+          AccessLens
+        </a>
+        <span className="pilot-label">Civic accessibility pilot</span>
+      </header>
+
+      <section className="hero" id="top">
+        <p className="eyebrow">Make access visible</p>
+        <h1>One photo can start<br />meaningful action.</h1>
+        <p className="intro">Report barriers at transit stations in a few clear steps. AccessLens turns what you see into a ready-to-send civic complaint.</p>
       </section>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      <section className="workspace" aria-label="Accessibility reporting workspace">
+        <div className="capture-placeholder">
+          <span className="step-number">1</span>
+          <div className="capture-icon">⌁</div>
+          <h2>Show us the barrier</h2>
+          <p>Upload a photo of a blocked ramp, broken lift, or unsafe crossing.</p>
+          <span className="coming-soon">Photo upload · Phase 2</span>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
+
+        <div className="report-placeholder">
+          <p className="eyebrow">Accessibility report</p>
+          <div className="report-icon">✦</div>
+          <h2>A clearer way to be heard.</h2>
+          <p>Your photo will become a concise accessibility report and complaint draft—without requiring you to understand the civic system first.</p>
         </div>
       </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      <section className="promise">
+        <p className="eyebrow">The promise</p>
+        <h2>See a barrier. Start action.</h2>
+        <div className="promise-steps">
+          <article><span>01</span><h3>Capture</h3><p>Document the barrier in the moment.</p></article>
+          <article><span>02</span><h3>Understand</h3><p>Make its impact clear for every commuter.</p></article>
+          <article><span>03</span><h3>Act</h3><p>Share a complaint that is ready to send.</p></article>
+        </div>
+      </section>
+
+      <footer>AccessLens is a civic reporting prototype for more accessible public spaces.</footer>
+    </main>
   )
 }
 
