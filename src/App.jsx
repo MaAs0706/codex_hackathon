@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import sampleBarrier from '../codex_image.jpeg'
+import { supabase } from './lib/supabase'
 import './App.css'
 
 function App() {
@@ -9,6 +10,13 @@ function App() {
   const [location, setLocation] = useState('Vyttila Metro Station')
   const [note, setNote] = useState('')
   const [report, setReport] = useState(false)
+  const [session, setSession] = useState(null)
+  const [authOpen, setAuthOpen] = useState(false)
+  const [authMode, setAuthMode] = useState('signIn')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authMessage, setAuthMessage] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
 
   function selectPhoto(event) {
     const file = event.target.files?.[0]
@@ -37,6 +45,38 @@ function App() {
   }
   const currentAnalysis = mockAnalyses[placeType]
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession))
+    return () => listener.subscription.unsubscribe()
+  }, [])
+
+  async function handleAuth(event) {
+    event.preventDefault()
+    setAuthBusy(true)
+    setAuthMessage('')
+    const action = authMode === 'signIn'
+      ? supabase.auth.signInWithPassword({ email, password })
+      : supabase.auth.signUp({ email, password })
+    const { data, error } = await action
+    setAuthBusy(false)
+    if (error) {
+      setAuthMessage(error.message)
+      return
+    }
+    if (authMode === 'signUp' && !data.session) {
+      setAuthMessage('Check your email to confirm your account, then sign in.')
+      return
+    }
+    setAuthOpen(false)
+    setEmail('')
+    setPassword('')
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut()
+  }
+
   return (
     <main>
       <header className="site-header">
@@ -44,7 +84,11 @@ function App() {
           <span className="brand-mark">◉</span>
           AccessLens
         </a>
-        <span className="pilot-label">Civic accessibility pilot</span>
+        {session ? (
+          <button className="account-button" type="button" onClick={signOut}>Sign out</button>
+        ) : (
+          <button className="account-button" type="button" onClick={() => { setAuthOpen(true); setAuthMessage('') }}>Sign in</button>
+        )}
       </header>
 
       <section className="hero" id="top">
@@ -121,6 +165,28 @@ function App() {
       </section>
 
       <footer>AccessLens is a civic reporting prototype for more accessible public spaces.</footer>
+
+      {authOpen && (
+        <div className="auth-backdrop" role="presentation" onMouseDown={() => setAuthOpen(false)}>
+          <section className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onMouseDown={(event) => event.stopPropagation()}>
+            <button className="close-button" type="button" onClick={() => setAuthOpen(false)} aria-label="Close">×</button>
+            <p className="eyebrow">Your AccessLens account</p>
+            <h2 id="auth-title">{authMode === 'signIn' ? 'Welcome back.' : 'Start reporting.'}</h2>
+            <p className="auth-copy">{authMode === 'signIn' ? 'Sign in to follow your reports and see authority updates.' : 'Create an account to submit reports and track action.'}</p>
+            <form onSubmit={handleAuth}>
+              <label htmlFor="email">Email address</label>
+              <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" />
+              <label htmlFor="password">Password</label>
+              <input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength="6" autoComplete={authMode === 'signIn' ? 'current-password' : 'new-password'} />
+              {authMessage && <p className="auth-message">{authMessage}</p>}
+              <button className="auth-submit" type="submit" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'signIn' ? 'Sign in' : 'Create account'}</button>
+            </form>
+            <button className="auth-switch" type="button" onClick={() => { setAuthMode(authMode === 'signIn' ? 'signUp' : 'signIn'); setAuthMessage('') }}>
+              {authMode === 'signIn' ? 'New here? Create an account' : 'Already have an account? Sign in'}
+            </button>
+          </section>
+        </div>
+      )}
     </main>
   )
 }
