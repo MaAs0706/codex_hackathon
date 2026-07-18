@@ -3,6 +3,9 @@ import sampleBarrier from '../codex_image.jpeg'
 import { supabase } from './lib/supabase'
 import './App.css'
 
+const statusLabels = { submitted: 'Submitted', under_review: 'Under review', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed' }
+const severityRank = { Urgent: 0, 'High priority': 1, 'Moderate priority': 2, 'Low priority': 3 }
+
 function App() {
   const fileInput = useRef(null)
   const [photo, setPhoto] = useState(sampleBarrier)
@@ -37,6 +40,12 @@ function App() {
   const [publicReports, setPublicReports] = useState([])
   const [publicLoading, setPublicLoading] = useState(false)
   const [publicError, setPublicError] = useState('')
+  const [copied, setCopied] = useState(false)
+  const [publicQuery, setPublicQuery] = useState('')
+  const [publicStatus, setPublicStatus] = useState('all')
+  const [adminQuery, setAdminQuery] = useState('')
+  const [adminStatus, setAdminStatus] = useState('all')
+  const [adminProfiles, setAdminProfiles] = useState([])
 
   function selectPhoto(event) {
     const file = event.target.files?.[0]
@@ -100,6 +109,7 @@ function App() {
       ? { ...mockAnalyses[placeType], impact: `${mockAnalyses[placeType].impact} The citizen additionally reports: “${noteText.slice(0, 180)}”.` }
       : mockAnalyses[placeType]
   const currentAnalysis = analysisResult || mockAnalysis
+  const complaintDraft = `Subject: Action requested — ${currentAnalysis.category} at ${location || 'public location'}\n\nDear Civic Accessibility Team,\n\nI am reporting a ${currentAnalysis.category.toLowerCase()} at ${location || 'this public location'} (${placeType}).\n\nAccessibility and safety impact: ${currentAnalysis.impact}\n\nPeople affected: ${currentAnalysis.affected}\n\nRequested action: ${currentAnalysis.action}${noteText ? `\n\nAdditional information: ${noteText}` : ''}\n\nPlease acknowledge this report and share the next action planned.\n\nSincerely,\nA concerned citizen`
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -172,7 +182,7 @@ function App() {
         const { data: photo } = await supabase.storage.from('report-photos').createSignedUrl(item.photo_path, 3600)
         return { ...item, photoUrl: photo?.signedUrl }
       }))
-      setAdminReports(reportsWithPhotos)
+      setAdminReports(reportsWithPhotos.sort((left, right) => (severityRank[left.severity] ?? 9) - (severityRank[right.severity] ?? 9) || new Date(right.created_at) - new Date(left.created_at)))
       setAdminLoading(false)
     }
 
@@ -183,6 +193,16 @@ function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'report_updates' }, loadAdminReports)
       .subscribe()
     return () => supabase.removeChannel(channel)
+  }, [session, role])
+
+  useEffect(() => {
+    if (!session || role !== 'admin') return undefined
+    async function loadAdminProfiles() {
+      const { data } = await supabase.from('profiles').select('id, full_name').eq('role', 'admin')
+      setAdminProfiles(data || [])
+    }
+    loadAdminProfiles()
+    return undefined
   }, [session, role])
 
   useEffect(() => {
@@ -237,6 +257,17 @@ function App() {
     setRole(null)
   }
 
+  async function copyComplaint() {
+    await navigator.clipboard.writeText(complaintDraft)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1800)
+  }
+
+  async function shareComplaint() {
+    if (navigator.share) await navigator.share({ title: 'AccessLens civic report', text: complaintDraft })
+    else copyComplaint()
+  }
+
   async function uploadEvidence() {
     if (uploadedPhotoPath) return uploadedPhotoPath
     const imageBlob = photoFile || await fetch(photo).then((response) => response.blob())
@@ -257,7 +288,7 @@ function App() {
     if (!session) {
       setAnalysisResult(null)
       setAnalysisSource('Offline mock analysis')
-      setAnalysisNotice('Sign in to use AI vision. Showing the offline demo analysis instead.')
+      setAnalysisNotice('Sign in to use AI report generation. Showing the offline demo analysis instead.')
       setReport(true)
       setAnalyzing(false)
       return
@@ -285,19 +316,19 @@ function App() {
   function updateAdminEdit(reportId, field, value) {
     setAdminEdits((current) => ({
       ...current,
-      [reportId]: { status: current[reportId]?.status || adminReports.find((item) => item.id === reportId)?.status || 'submitted', remark: current[reportId]?.remark || '', [field]: value },
+      [reportId]: { status: current[reportId]?.status || adminReports.find((item) => item.id === reportId)?.status || 'submitted', remark: current[reportId]?.remark || '', assignedAdminId: current[reportId]?.assignedAdminId ?? adminReports.find((item) => item.id === reportId)?.assigned_admin_id ?? '', [field]: value },
     }))
   }
 
   async function saveAdminUpdate(report) {
-    const edit = adminEdits[report.id] || { status: report.status, remark: '' }
+    const edit = adminEdits[report.id] || { status: report.status, remark: '', assignedAdminId: report.assigned_admin_id || '' }
     if (!edit.remark.trim()) {
       setAdminError('Add a short remark before publishing an update.')
       return
     }
     setAdminSaving(report.id)
     setAdminError('')
-    const { error: reportError } = await supabase.from('reports').update({ status: edit.status }).eq('id', report.id)
+    const { error: reportError } = await supabase.from('reports').update({ status: edit.status, assigned_admin_id: edit.assignedAdminId || null }).eq('id', report.id)
     if (reportError) {
       setAdminError(reportError.message)
       setAdminSaving(null)
@@ -344,6 +375,13 @@ function App() {
       setSubmitState({ status: 'error', message: error.message || 'We could not submit your report. Please try again.' })
     }
   }
+
+  const matchesReport = (item, query, status) => {
+    const searchable = `${item.location_name} ${item.place_type} ${item.issue_category}`.toLowerCase()
+    return (status === 'all' || item.status === status) && (!query.trim() || searchable.includes(query.trim().toLowerCase()))
+  }
+  const filteredPublicReports = publicReports.filter((item) => matchesReport(item, publicQuery, publicStatus))
+  const filteredAdminReports = adminReports.filter((item) => matchesReport(item, adminQuery, adminStatus))
 
   return (
     <main>
@@ -419,6 +457,7 @@ function App() {
               <section className="recommendation"><span>✦</span><div><p>Recommended action</p><strong>{currentAnalysis.action}</strong></div></section>
               {note && <p className="note-recorded">Your note has been included in the report.</p>}
               {analysisNotice && <p className="analysis-notice">{analysisNotice}</p>}
+              <section className="complaint-draft"><div className="complaint-heading"><div><p className="eyebrow">Ready to copy</p><h3>Formal complaint draft</h3></div><button type="button" onClick={copyComplaint}>{copied ? 'Copied!' : 'Copy'}</button></div><pre>{complaintDraft}</pre><button className="share-complaint" type="button" onClick={shareComplaint}>↗ Share complaint</button></section>
               <section className="submission-box">
                 <div><p className="eyebrow">Ready to send</p><h3>Submit this report</h3><p>Your photo and report will be shared privately with the AccessLens response team.</p></div>
                 <button type="button" onClick={submitReport} disabled={submitState.status === 'loading'}>{submitState.status === 'loading' ? 'Submitting…' : 'Submit report →'}</button>
@@ -450,7 +489,7 @@ function App() {
               const updates = [...(item.report_updates || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
               return <article className="report-card" key={item.id}>
                 {item.photoUrl ? <img src={item.photoUrl} alt={`Evidence for ${item.issue_category}`} /> : <div className="photo-missing">No photo</div>}
-                <div className="report-card-content"><div className="report-card-top"><div><p className="eyebrow">{item.place_type}</p><h2>{item.location_name}</h2></div><span className={`status-label ${item.status}`}>{item.status.replace('_', ' ')}</span></div><p className="report-category">{item.issue_category} · {item.severity}</p><p className="report-date">Submitted {new Date(item.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</p><div className="updates"><h3>Updates</h3>{updates.length ? updates.map((update) => <div className="update" key={update.id}><span></span><div>{update.status && <strong>{update.status.replace('_', ' ')}</strong>}<p>{update.remark}</p><time>{new Date(update.created_at).toLocaleString()}</time></div></div>) : <p className="waiting-update">No authority update yet. You’ll see it here as soon as there is one.</p>}</div></div>
+                <div className="report-card-content"><div className="report-card-top"><div><p className="eyebrow">{item.place_type}</p><h2>{item.location_name}</h2></div><span className={`status-label ${item.status}`}>{statusLabels[item.status]}</span></div><p className="report-category">{item.issue_category} · {item.severity}</p><p className="report-date">Submitted {new Date(item.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</p><div className="updates"><h3>Updates</h3>{updates.length ? updates.map((update) => <div className="update" key={update.id}><span></span><div>{update.status && <strong>{statusLabels[update.status]}</strong>}<p>{update.remark}</p><time>{new Date(update.created_at).toLocaleString()}</time></div></div>) : <p className="waiting-update">No authority update yet. You’ll see it here as soon as there is one.</p>}</div></div>
               </article>
             })}
           </div>
@@ -462,12 +501,13 @@ function App() {
           {adminLoading && <p className="dashboard-note">Loading reports…</p>}
           {adminError && <p className="dashboard-error">{adminError}</p>}
           {!adminLoading && !adminError && adminReports.length === 0 && <div className="no-reports"><span>◉</span><h2>No reports yet</h2><p>New reports submitted by citizens will appear here automatically.</p></div>}
+          <div className="report-filters"><input value={adminQuery} onChange={(event) => setAdminQuery(event.target.value)} placeholder="Search location, category, or place" aria-label="Search admin reports" /><select value={adminStatus} onChange={(event) => setAdminStatus(event.target.value)} aria-label="Filter admin reports by status"><option value="all">All statuses</option>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><span>{filteredAdminReports.length} shown · priority sorted</span></div>
           <div className="reports-list">
-            {adminReports.map((item) => {
+            {filteredAdminReports.map((item) => {
               const edit = adminEdits[item.id] || { status: item.status, remark: '' }
               return <article className="report-card admin-report-card" key={item.id}>
                 {item.photoUrl ? <img src={item.photoUrl} alt={`Evidence for ${item.issue_category}`} /> : <div className="photo-missing">No photo</div>}
-                <div className="report-card-content"><div className="report-card-top"><div><p className="eyebrow">{item.place_type}</p><h2>{item.location_name}</h2></div><span className={`status-label ${item.status}`}>{item.status.replace('_', ' ')}</span></div><p className="report-category">{item.issue_category} · {item.severity}</p><p className="report-date">{item.accessibility_impact}</p>{item.user_note && <p className="citizen-note">Citizen note: “{item.user_note}”</p>}<div className="admin-update-form"><h3>Publish an update</h3><label htmlFor={`status-${item.id}`}>Status</label><select id={`status-${item.id}`} value={edit.status} onChange={(event) => updateAdminEdit(item.id, 'status', event.target.value)}><option value="submitted">Submitted</option><option value="under_review">Under review</option><option value="in_progress">In progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select><label htmlFor={`remark-${item.id}`}>Remark for the citizen</label><textarea id={`remark-${item.id}`} rows="3" value={edit.remark} onChange={(event) => updateAdminEdit(item.id, 'remark', event.target.value)} placeholder="E.g. A site inspection has been scheduled for tomorrow." /><button type="button" onClick={() => saveAdminUpdate(item)} disabled={adminSaving === item.id}>{adminSaving === item.id ? 'Publishing…' : 'Publish update'}</button></div></div>
+                <div className="report-card-content"><div className="report-card-top"><div><p className="eyebrow">{item.place_type}</p><h2>{item.location_name}</h2></div><span className={`status-label ${item.status}`}>{statusLabels[item.status]}</span></div><p className="report-category">{item.issue_category} · {item.severity}</p><p className="report-date">{item.accessibility_impact}</p>{item.user_note && <p className="citizen-note">Citizen note: “{item.user_note}”</p>}<div className="admin-update-form"><h3>Assign and publish an update</h3><label htmlFor={`assignment-${item.id}`}>Assigned admin</label><select id={`assignment-${item.id}`} value={edit.assignedAdminId ?? item.assigned_admin_id ?? ''} onChange={(event) => updateAdminEdit(item.id, 'assignedAdminId', event.target.value)}><option value="">Unassigned</option>{adminProfiles.map((admin) => <option value={admin.id} key={admin.id}>{admin.full_name || 'Administrator'}</option>)}</select><label htmlFor={`status-${item.id}`}>Status</label><select id={`status-${item.id}`} value={edit.status} onChange={(event) => updateAdminEdit(item.id, 'status', event.target.value)}>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><label htmlFor={`remark-${item.id}`}>Remark for the citizen</label><textarea id={`remark-${item.id}`} rows="3" value={edit.remark} onChange={(event) => updateAdminEdit(item.id, 'remark', event.target.value)} placeholder="E.g. A site inspection has been scheduled for tomorrow." /><button type="button" onClick={() => saveAdminUpdate(item)} disabled={adminSaving === item.id}>{adminSaving === item.id ? 'Publishing…' : 'Publish update'}</button></div></div>
               </article>
             })}
           </div>
@@ -479,8 +519,9 @@ function App() {
           {publicLoading && <p className="dashboard-note">Loading public reports…</p>}
           {publicError && <p className="dashboard-error">{publicError}</p>}
           {!publicLoading && !publicError && publicReports.length === 0 && <div className="no-reports"><span>◉</span><h2>No public reports yet</h2><p>Submitted community reports will appear here once available.</p></div>}
+          <div className="report-filters"><input value={publicQuery} onChange={(event) => setPublicQuery(event.target.value)} placeholder="Search location, category, or place" aria-label="Search public reports" /><select value={publicStatus} onChange={(event) => setPublicStatus(event.target.value)} aria-label="Filter public reports by status"><option value="all">All statuses</option>{Object.entries(statusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><span>{filteredPublicReports.length} reports found</span></div>
           <div className="public-reports-grid">
-            {publicReports.map((item) => <article className="public-report-card" key={item.id}><div className="report-card-top"><div><p className="eyebrow">{item.place_type}</p><h2>{item.location_name}</h2></div><span className={`status-label ${item.status}`}>{item.status.replace('_', ' ')}</span></div><p className="report-category">{item.issue_category} · {item.severity}</p><p className="public-impact">{item.accessibility_impact}</p><section className="public-action"><p>Recommended action</p><strong>{item.recommended_action}</strong></section><div className="updates"><h3>Action updates</h3>{item.updates.length ? item.updates.map((update) => <div className="update" key={update.id}><span></span><div>{update.status && <strong>{update.status.replace('_', ' ')}</strong>}<p>{update.remark}</p><time>{new Date(update.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</time></div></div>) : <p className="waiting-update">No action update has been published yet.</p>}</div></article>)}
+            {filteredPublicReports.map((item) => <article className="public-report-card" key={item.id}><div className="report-card-top"><div><p className="eyebrow">{item.place_type}</p><h2>{item.location_name}</h2></div><span className={`status-label ${item.status}`}>{statusLabels[item.status]}</span></div><p className="report-category">{item.issue_category} · {item.severity}</p><p className="public-impact">{item.accessibility_impact}</p><section className="public-action"><p>Recommended action</p><strong>{item.recommended_action}</strong></section><div className="updates"><h3>Action updates</h3>{item.updates.length ? item.updates.map((update) => <div className="update" key={update.id}><span></span><div>{update.status && <strong>{statusLabels[update.status]}</strong>}<p>{update.remark}</p><time>{new Date(update.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</time></div></div>) : <p className="waiting-update">No action update has been published yet.</p>}</div></article>)}
           </div>
         </section>
       )}
