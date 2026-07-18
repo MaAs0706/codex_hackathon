@@ -5,6 +5,9 @@ import './App.css'
 function App() {
   const fileInput = useRef(null)
   const [photo, setPhoto] = useState(sampleBarrier)
+  const [placeType, setPlaceType] = useState('Metro / transit station')
+  const [location, setLocation] = useState('Vyttila Metro Station')
+  const [note, setNote] = useState('')
 
   function selectPhoto(event) {
     const file = event.target.files?.[0]
@@ -38,6 +41,23 @@ function App() {
           </button>
           <input ref={fileInput} type="file" accept="image/*" onChange={selectPhoto} hidden />
           <p className="photo-help">Choose a clear photo that shows the barrier and its surroundings.</p>
+
+          <label className="field-label" htmlFor="place-type"><span className="step-number">2</span> What kind of place is this?</label>
+          <select id="place-type" value={placeType} onChange={(event) => setPlaceType(event.target.value)}>
+            <option>Metro / transit station</option>
+            <option>Hospital or clinic</option>
+            <option>School or college</option>
+            <option>Road, footpath, or crossing</option>
+            <option>Park or public space</option>
+            <option>Other public building</option>
+          </select>
+
+          <label className="field-label" htmlFor="location"><span className="step-number">3</span> Where is it?</label>
+          <input id="location" value={location} onChange={(event) => setLocation(event.target.value)} placeholder="E.g. Vyttila Metro Station" />
+
+          <label className="field-label" htmlFor="note"><span className="step-number">4</span> Anything else? <em>Optional</em></label>
+          <textarea id="note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="E.g. The ramp has been blocked since morning" rows="3" />
+          <button className="analyse-btn" type="button">Analyse barrier <span>→</span></button>
         </div>
 
         <div className="report-placeholder">
