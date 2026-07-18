@@ -6,6 +6,7 @@ import './scene.css'
 import './photo.css'
 import './darkmode.css'
 import './night-scene.css'
+import './theme-lamp.css'
 
 const statusLabels = { submitted: 'Submitted', under_review: 'Under review', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed' }
 const severityRank = { Urgent: 0, 'High priority': 1, 'Moderate priority': 2, 'Low priority': 3 }
@@ -408,6 +409,7 @@ function App() {
         <button className="brand" type="button" onClick={() => setView(session ? 'dashboard' : 'home')} aria-label="AccessLens home">
           AccessLens
         </button>
+        {session && <button className="hanging-lamp" type="button" onClick={() => setDarkMode((current) => !current)} aria-label={darkMode ? 'Switch to bright mode' : 'Switch to dark mode'} aria-pressed={darkMode} title={darkMode ? 'Switch to bright mode' : 'Switch to dark mode'}><i></i></button>}
         {session ? (
           <div className="header-actions"><button className="account-button nav-link" type="button" onClick={() => setView('public')}>Public reports</button><button className="account-button nav-link" type="button" onClick={() => setView('dashboard')}>My reports</button>{role === 'admin' && <button className="account-button admin-nav" type="button" onClick={() => setView('admin')}>Admin</button>}<button className="account-button" type="button" onClick={signOut}>Sign out</button></div>
         ) : (

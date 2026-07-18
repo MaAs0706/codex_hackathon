@@ -1,0 +1,65 @@
+.site-header { position: relative; }
+
+.hanging-lamp {
+  position: absolute;
+  z-index: 9;
+  top: 0;
+  left: 52%;
+  width: 38px;
+  height: 70px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.hanging-lamp::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18px;
+  width: 2px;
+  height: 41px;
+  background: #54746a;
+}
+
+.hanging-lamp::after {
+  content: '';
+  position: absolute;
+  top: 37px;
+  left: 7px;
+  width: 24px;
+  height: 13px;
+  border-radius: 15px 15px 5px 5px;
+  background: #43695c;
+}
+
+.hanging-lamp i {
+  position: absolute;
+  z-index: 1;
+  top: 48px;
+  left: 12px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #b4cdc0;
+  box-shadow: 0 0 0 4px #e0ece3;
+  transition: .25s ease;
+}
+
+.hanging-lamp:hover i { transform: scale(1.12); }
+.dark-mode .hanging-lamp::before, .dark-mode .hanging-lamp::after { background: #d09b59; }
+.dark-mode .hanging-lamp i { background: #fff0ab; box-shadow: 0 0 12px 5px #f8db7875; animation: hanging-lamp-flicker 2.4s steps(2, end) infinite; }
+
+@keyframes hanging-lamp-flicker {
+  0%, 47%, 52%, 100% { opacity: 1; }
+  49% { opacity: .45; }
+}
+
+@media (max-width: 760px) {
+  .hanging-lamp { left: 48%; transform: scale(.86); transform-origin: top center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dark-mode .hanging-lamp i { animation: none; }
+}
