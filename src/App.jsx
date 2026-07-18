@@ -3,6 +3,7 @@ import sampleBarrier from '../codex_image.jpeg'
 import { supabase } from './lib/supabase'
 import './App.css'
 import './animations.css'
+import './scene.css'
 
 const statusLabels = { submitted: 'Submitted', under_review: 'Under review', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed' }
 const severityRank = { Urgent: 0, 'High priority': 1, 'Moderate priority': 2, 'Low priority': 3 }
@@ -419,6 +420,8 @@ function App() {
               <div className="walking-person walker-one"><i></i><b></b><em></em></div>
               <div className="walking-person walker-two"><i></i><b></b><em></em></div>
               <div className="walking-person walker-three"><i></i><b></b><em></em></div>
+              <div className="pothole"></div>
+              <div className="falling-person"><i></i><b></b><em></em></div>
               <div className="sidewalk"></div>
             </div>
           </div>
