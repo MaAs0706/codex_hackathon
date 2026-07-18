@@ -34,6 +34,9 @@ function App() {
   const [adminError, setAdminError] = useState('')
   const [adminEdits, setAdminEdits] = useState({})
   const [adminSaving, setAdminSaving] = useState(null)
+  const [publicReports, setPublicReports] = useState([])
+  const [publicLoading, setPublicLoading] = useState(false)
+  const [publicError, setPublicError] = useState('')
 
   function selectPhoto(event) {
     const file = event.target.files?.[0]
@@ -182,6 +185,30 @@ function App() {
     return () => supabase.removeChannel(channel)
   }, [session, role])
 
+  useEffect(() => {
+    if (view !== 'public') return undefined
+
+    async function loadPublicReports() {
+      setPublicLoading(true)
+      setPublicError('')
+      const [{ data: reports, error: reportsFailure }, { data: updates, error: updatesFailure }] = await Promise.all([
+        supabase.from('public_reports').select('*').order('created_at', { ascending: false }),
+        supabase.from('public_report_updates').select('*').order('created_at', { ascending: false }),
+      ])
+      if (reportsFailure || updatesFailure) {
+        setPublicError(reportsFailure?.message || updatesFailure?.message || 'Unable to load public reports.')
+        setPublicLoading(false)
+        return
+      }
+      setPublicReports(reports.map((item) => ({ ...item, updates: updates.filter((update) => update.report_id === item.id) })))
+      setPublicLoading(false)
+    }
+
+    loadPublicReports()
+    const refresh = window.setInterval(loadPublicReports, 30000)
+    return () => window.clearInterval(refresh)
+  }, [view])
+
   async function handleAuth(event) {
     event.preventDefault()
     setAuthBusy(true)
@@ -326,9 +353,9 @@ function App() {
           AccessLens
         </button>
         {session ? (
-          <div className="header-actions"><button className="account-button" type="button" onClick={() => setView('dashboard')}>My reports</button>{role === 'admin' && <button className="account-button admin-nav" type="button" onClick={() => setView('admin')}>Admin</button>}<button className="account-button" type="button" onClick={signOut}>Sign out</button></div>
+          <div className="header-actions"><button className="account-button" type="button" onClick={() => setView('public')}>Public reports</button><button className="account-button" type="button" onClick={() => setView('dashboard')}>My reports</button>{role === 'admin' && <button className="account-button admin-nav" type="button" onClick={() => setView('admin')}>Admin</button>}<button className="account-button" type="button" onClick={signOut}>Sign out</button></div>
         ) : (
-          <button className="account-button" type="button" onClick={() => { setAuthOpen(true); setAuthMessage('') }}>Sign in</button>
+          <div className="header-actions"><button className="account-button" type="button" onClick={() => setView('public')}>Public reports</button><button className="account-button" type="button" onClick={() => { setAuthOpen(true); setAuthMessage('') }}>Sign in</button></div>
         )}
       </header>
 
@@ -428,7 +455,7 @@ function App() {
             })}
           </div>
         </section>
-      ) : (
+      ) : view === 'admin' ? (
         <section className="dashboard admin-dashboard">
           <p className="eyebrow">Admin dashboard</p>
           <div className="dashboard-heading"><div><h1>Incoming reports</h1><p>Review citizen reports, update their progress, and publish an action note. Citizens see each update in real time.</p></div><span className="admin-count">{adminReports.length} total</span></div>
@@ -443,6 +470,17 @@ function App() {
                 <div className="report-card-content"><div className="report-card-top"><div><p className="eyebrow">{item.place_type}</p><h2>{item.location_name}</h2></div><span className={`status-label ${item.status}`}>{item.status.replace('_', ' ')}</span></div><p className="report-category">{item.issue_category} · {item.severity}</p><p className="report-date">{item.accessibility_impact}</p>{item.user_note && <p className="citizen-note">Citizen note: “{item.user_note}”</p>}<div className="admin-update-form"><h3>Publish an update</h3><label htmlFor={`status-${item.id}`}>Status</label><select id={`status-${item.id}`} value={edit.status} onChange={(event) => updateAdminEdit(item.id, 'status', event.target.value)}><option value="submitted">Submitted</option><option value="under_review">Under review</option><option value="in_progress">In progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select><label htmlFor={`remark-${item.id}`}>Remark for the citizen</label><textarea id={`remark-${item.id}`} rows="3" value={edit.remark} onChange={(event) => updateAdminEdit(item.id, 'remark', event.target.value)} placeholder="E.g. A site inspection has been scheduled for tomorrow." /><button type="button" onClick={() => saveAdminUpdate(item)} disabled={adminSaving === item.id}>{adminSaving === item.id ? 'Publishing…' : 'Publish update'}</button></div></div>
               </article>
             })}
+          </div>
+        </section>
+      ) : (
+        <section className="dashboard public-dashboard">
+          <p className="eyebrow">Community transparency</p>
+          <div className="dashboard-heading"><div><h1>Public reports</h1><p>See accessibility and civic-safety issues reported by the community, along with the actions and updates recorded for each one.</p></div><button className="new-report-button" type="button" onClick={() => setView('report')}>+ Report an issue</button></div>
+          {publicLoading && <p className="dashboard-note">Loading public reports…</p>}
+          {publicError && <p className="dashboard-error">{publicError}</p>}
+          {!publicLoading && !publicError && publicReports.length === 0 && <div className="no-reports"><span>◉</span><h2>No public reports yet</h2><p>Submitted community reports will appear here once available.</p></div>}
+          <div className="public-reports-grid">
+            {publicReports.map((item) => <article className="public-report-card" key={item.id}><div className="report-card-top"><div><p className="eyebrow">{item.place_type}</p><h2>{item.location_name}</h2></div><span className={`status-label ${item.status}`}>{item.status.replace('_', ' ')}</span></div><p className="report-category">{item.issue_category} · {item.severity}</p><p className="public-impact">{item.accessibility_impact}</p><section className="public-action"><p>Recommended action</p><strong>{item.recommended_action}</strong></section><div className="updates"><h3>Action updates</h3>{item.updates.length ? item.updates.map((update) => <div className="update" key={update.id}><span></span><div>{update.status && <strong>{update.status.replace('_', ' ')}</strong>}<p>{update.remark}</p><time>{new Date(update.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</time></div></div>) : <p className="waiting-update">No action update has been published yet.</p>}</div></article>)}
           </div>
         </section>
       )}
