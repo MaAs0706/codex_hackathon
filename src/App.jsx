@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import sampleBarrier from '../codex_image.jpeg'
 import { supabase } from './lib/supabase'
 import './App.css'
+import './animations.css'
 
 const statusLabels = { submitted: 'Submitted', under_review: 'Under review', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed' }
 const severityRank = { Urgent: 0, 'High priority': 1, 'Moderate priority': 2, 'Low priority': 3 }
@@ -411,6 +412,15 @@ function App() {
             <div className="visual-card visual-photo"><span className="mini-label">Citizen report</span><div className="photo-illustration"><span>⌁</span></div><strong>Unsafe crossing</strong><small>Vyttila Junction</small></div>
             <div className="visual-card visual-analysis"><span className="analysis-spark">✦</span><span className="mini-label">AccessLens analysis</span><strong>High priority</strong><p>Unsafe pedestrian route</p><div className="progress-line"><i></i></div></div>
             <div className="visual-card visual-update"><span className="update-dot"></span><div><span className="mini-label">Authority update</span><strong>Inspection scheduled</strong></div></div>
+            <div className="city-scene" aria-hidden="true">
+              <div className="skyline"><i></i><i></i><i></i><i></i><i></i></div>
+              <div className="metro-track"><div className="metro-train"><b></b><b></b><b></b><b></b><em></em></div></div>
+              <div className="street-lamp"><i></i></div>
+              <div className="walking-person walker-one"><i></i><b></b><em></em></div>
+              <div className="walking-person walker-two"><i></i><b></b><em></em></div>
+              <div className="walking-person walker-three"><i></i><b></b><em></em></div>
+              <div className="sidewalk"></div>
+            </div>
           </div>
         </section>
         <section className="home-proof">

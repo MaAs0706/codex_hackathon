@@ -1,0 +1,9 @@
+@media (prefers-reduced-motion: reduce) {
+  .metro-train,
+  .walking-person,
+  .walking-person em,
+  .walking-person::after,
+  .street-lamp i {
+    animation: none;
+  }
+}
