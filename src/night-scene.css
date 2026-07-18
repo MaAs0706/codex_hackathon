@@ -1,0 +1,38 @@
+.dark-mode .city-scene {
+  background: linear-gradient(180deg, #102727 0%, #102727 44%, #0a1718 45%, #0a1718 100%);
+}
+
+.dark-mode .city-scene::after {
+  content: '';
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 145px 118px at 91% 57%, transparent 0 36%, rgba(5, 13, 15, .28) 61%, rgba(3, 10, 12, .88) 100%);
+  animation: lamp-pool-flicker 1.2s steps(2, end) infinite;
+}
+
+.dark-mode .sidewalk {
+  border-color: #41655a;
+  background: repeating-linear-gradient(90deg, #1a3432 0 44px, #132927 44px 46px);
+}
+
+.dark-mode .metro-track { background: #6d9582; box-shadow: 0 7px 0 #2e574d; }
+.dark-mode .walking-person { filter: drop-shadow(8px 6px 0 rgba(0, 0, 0, .58)); }
+.dark-mode .pothole { border-color: #754f3d; background: #050d0d; }
+.dark-mode .pothole::after { color: #f3ba67; }
+
+@keyframes lamp-pool-flicker {
+  0%, 18%, 22%, 70%, 75%, 100% {
+    opacity: .42;
+    background: radial-gradient(ellipse 145px 118px at 91% 57%, transparent 0 36%, rgba(5, 13, 15, .28) 61%, rgba(3, 10, 12, .88) 100%);
+  }
+  20%, 73% {
+    opacity: .96;
+    background: radial-gradient(ellipse 145px 118px at 91% 57%, rgba(2, 8, 10, .95) 0 42%, rgba(2, 8, 10, .82) 62%, rgba(3, 10, 12, .9) 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dark-mode .city-scene::after { animation: none; opacity: .42; }
+}

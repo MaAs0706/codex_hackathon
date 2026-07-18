@@ -4,6 +4,8 @@ import './App.css'
 import './animations.css'
 import './scene.css'
 import './photo.css'
+import './darkmode.css'
+import './night-scene.css'
 
 const statusLabels = { submitted: 'Submitted', under_review: 'Under review', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed' }
 const severityRank = { Urgent: 0, 'High priority': 1, 'Moderate priority': 2, 'Low priority': 3 }
@@ -49,6 +51,7 @@ function App() {
   const [adminQuery, setAdminQuery] = useState('')
   const [adminStatus, setAdminStatus] = useState('all')
   const [adminProfiles, setAdminProfiles] = useState([])
+  const [darkMode, setDarkMode] = useState(false)
 
   function selectPhoto(event) {
     const file = event.target.files?.[0]
@@ -400,7 +403,7 @@ function App() {
   const filteredAdminReports = adminReports.filter((item) => matchesReport(item, adminQuery, adminStatus))
 
   return (
-    <main>
+    <main className={darkMode ? 'dark-mode' : ''}>
       <header className="site-header">
         <button className="brand" type="button" onClick={() => setView(session ? 'dashboard' : 'home')} aria-label="AccessLens home">
           AccessLens
@@ -429,7 +432,6 @@ function App() {
             <div className="city-scene" aria-hidden="true">
               <div className="skyline"><i></i><i></i><i></i><i></i><i></i></div>
               <div className="metro-track"><div className="metro-train"><b></b><b></b><b></b><b></b><em></em></div></div>
-              <div className="street-lamp"><i></i></div>
               <div className="walking-person walker-one"><i></i><b></b><em></em></div>
               <div className="walking-person walker-two"><i></i><b></b><em></em></div>
               <div className="walking-person walker-three"><i></i><b></b><em></em></div>
@@ -437,6 +439,7 @@ function App() {
               <div className="falling-person"><i></i><b></b><em></em></div>
               <div className="sidewalk"></div>
             </div>
+            <button className="street-lamp" type="button" onClick={() => setDarkMode((current) => !current)} aria-label={darkMode ? 'Turn off night mode' : 'Turn on night mode'} aria-pressed={darkMode}><i></i><span>{darkMode ? 'Day' : 'Night'}</span></button>
           </div>
         </section>
         <section className="home-proof">

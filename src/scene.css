@@ -1,5 +1,9 @@
 /* A small, continuously moving city scene for the landing page. */
 .metro-train { animation: metro-loop 6.5s linear infinite; }
+.street-lamp { z-index: 8; right: 30px; bottom: 42px; width: 5px; height: 116px; border-radius: 5px; background: #4c7566; box-shadow: 0 5px 10px #24463a33; }
+.street-lamp::before { top: -8px; left: -11px; width: 27px; height: 17px; border-radius: 14px 14px 4px 4px; }
+.street-lamp i { top: 8px; left: -18px; width: 41px; height: 41px; }
+.hero-visual .street-lamp span { top: 128px; left: -29px; width: 64px; color: #43695b; font-size: 9px; text-align: center; }
 
 /* Keep the authority update separate from the moving street scene. */
 .visual-update { top: 18px; right: 12px; bottom: auto; left: auto; transform: rotate(2deg); }
@@ -7,14 +11,14 @@
 .pothole { position: absolute; z-index: 6; bottom: 25px; left: 58%; width: 38px; height: 13px; border: 3px solid #b17a59; border-radius: 50%; background: #193c34; box-shadow: inset 0 3px 4px #08231d, 0 2px 0 #f5d6bd; }
 .pothole::before { content: ''; position: absolute; inset: 3px 7px; border-radius: 50%; background: #0b2922; }
 .pothole::after { content: '!'; position: absolute; top: -25px; left: 13px; color: #dd6c4f; font: 800 15px 'DM Mono', monospace; animation: hazard-pulse 1.1s ease-in-out infinite alternate; }
-.falling-person { position: absolute; z-index: 7; bottom: 38px; left: -28px; width: 15px; height: 32px; opacity: 0; transform-origin: 50% 80%; animation: citizen-trip 8.5s linear infinite; }
+.falling-person { position: absolute; z-index: 5; bottom: 38px; left: -28px; width: 15px; height: 32px; opacity: 0; transform-origin: 50% 80%; animation: citizen-trip 8.5s linear infinite; }
 .falling-person i { position: absolute; top: 0; left: 4px; width: 8px; height: 8px; border-radius: 50%; background: #344f45; }
 .falling-person b { position: absolute; top: 8px; left: 5px; width: 5px; height: 13px; border-radius: 4px; background: #ef9a70; }
 .falling-person em, .falling-person::after { content: ''; position: absolute; top: 19px; width: 4px; height: 13px; border-radius: 4px; background: #344f45; }
 .falling-person em { left: 3px; transform: rotate(18deg); }.falling-person::after { left: 9px; transform: rotate(-18deg); }
 
 @keyframes metro-loop { from { transform: translateX(0); } to { transform: translateX(650px); } }
-@keyframes citizen-trip { 0% { opacity: 0; transform: translateX(0) rotate(0deg); } 3%, 70% { opacity: 1; } 65% { transform: translateX(315px) rotate(0deg); } 71% { opacity: 1; transform: translateX(330px) translateY(8px) rotate(72deg); } 78% { opacity: 0; transform: translateX(330px) translateY(23px) rotate(93deg); } 100% { opacity: 0; transform: translateX(330px) translateY(23px) rotate(93deg); } }
+@keyframes citizen-trip { 0% { opacity: 0; left: -28px; bottom: 38px; transform: rotate(0deg); } 3%, 66% { opacity: 1; } 62% { left: calc(58% + 11px); bottom: 38px; transform: rotate(0deg); } 69% { left: calc(58% + 11px); bottom: 31px; transform: rotate(68deg); } 77% { opacity: .32; left: calc(58% + 11px); bottom: 18px; transform: rotate(94deg); } 85%, 100% { opacity: 0; left: calc(58% + 11px); bottom: 15px; transform: rotate(94deg); } }
 @keyframes hazard-pulse { from { opacity: .45; transform: translateY(1px); } to { opacity: 1; transform: translateY(-2px); } }
 
 @media (prefers-reduced-motion: reduce) { .falling-person { animation: none; opacity: 1; left: 63%; transform: rotate(72deg); } }
