@@ -6,6 +6,7 @@ import './App.css'
 function App() {
   const fileInput = useRef(null)
   const [photo, setPhoto] = useState(sampleBarrier)
+  const [photoFile, setPhotoFile] = useState(null)
   const [placeType, setPlaceType] = useState('Metro / transit station')
   const [location, setLocation] = useState('Vyttila Metro Station')
   const [note, setNote] = useState('')
@@ -17,10 +18,14 @@ function App() {
   const [password, setPassword] = useState('')
   const [authMessage, setAuthMessage] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
+  const [submitState, setSubmitState] = useState({ status: 'idle', message: '' })
 
   function selectPhoto(event) {
     const file = event.target.files?.[0]
-    if (file) setPhoto(URL.createObjectURL(file))
+    if (file) {
+      setPhoto(URL.createObjectURL(file))
+      setPhotoFile(file)
+    }
   }
 
   const mockAnalyses = {
@@ -75,6 +80,47 @@ function App() {
 
   async function signOut() {
     await supabase.auth.signOut()
+  }
+
+  async function submitReport() {
+    if (!session) {
+      setAuthMode('signIn')
+      setAuthMessage('Sign in to submit and track this report.')
+      setAuthOpen(true)
+      return
+    }
+    setSubmitState({ status: 'loading', message: '' })
+    try {
+      const imageBlob = photoFile || await fetch(photo).then((response) => response.blob())
+      const imageName = photoFile?.name || 'accesslens-demo-photo.jpeg'
+      const photoPath = `${session.user.id}/${crypto.randomUUID()}-${imageName.replace(/[^a-zA-Z0-9._-]/g, '-')}`
+      const { error: uploadError } = await supabase.storage
+        .from('report-photos')
+        .upload(photoPath, imageBlob, { contentType: imageBlob.type || 'image/jpeg' })
+      if (uploadError) throw uploadError
+
+      const { data, error: reportError } = await supabase
+        .from('reports')
+        .insert({
+          citizen_id: session.user.id,
+          place_type: placeType,
+          location_name: location || 'Unnamed location',
+          user_note: note || null,
+          photo_path: photoPath,
+          issue_category: currentAnalysis.category,
+          severity: currentAnalysis.severity,
+          affected_people: currentAnalysis.affected,
+          accessibility_impact: currentAnalysis.impact,
+          recommended_action: currentAnalysis.action,
+          ai_analysis: { source: 'offline mock analysis', ...currentAnalysis },
+        })
+        .select('id')
+        .single()
+      if (reportError) throw reportError
+      setSubmitState({ status: 'success', message: `Report submitted. Reference: ${data.id.slice(0, 8).toUpperCase()}` })
+    } catch (error) {
+      setSubmitState({ status: 'error', message: error.message || 'We could not submit your report. Please try again.' })
+    }
   }
 
   return (
@@ -149,6 +195,11 @@ function App() {
               </div>
               <section className="recommendation"><span>✦</span><div><p>Recommended action</p><strong>{currentAnalysis.action}</strong></div></section>
               {note && <p className="note-recorded">Your note has been included in the report.</p>}
+              <section className="submission-box">
+                <div><p className="eyebrow">Ready to send</p><h3>Submit this report</h3><p>Your photo and report will be shared privately with the AccessLens response team.</p></div>
+                <button type="button" onClick={submitReport} disabled={submitState.status === 'loading'}>{submitState.status === 'loading' ? 'Submitting…' : 'Submit report →'}</button>
+                {submitState.message && <p className={`submit-message ${submitState.status}`}>{submitState.message}</p>}
+              </section>
             </div>
           )}
         </div>
