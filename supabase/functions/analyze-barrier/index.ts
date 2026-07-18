@@ -1,5 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 
+const edgeRuntime = globalThis as typeof globalThis & {
+  Deno: {
+    env: { get: (name: string) => string | undefined }
+    serve: (handler: (request: Request) => Response | Promise<Response>) => void
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -12,7 +19,7 @@ function json(body: unknown, status = 200) {
   })
 }
 
-Deno.serve(async (request) => {
+edgeRuntime.Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
@@ -20,8 +27,8 @@ Deno.serve(async (request) => {
   if (!authorization) return json({ error: 'Authentication is required.' }, 401)
 
   const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    edgeRuntime.Deno.env.get('SUPABASE_URL') ?? '',
+    edgeRuntime.Deno.env.get('SUPABASE_ANON_KEY') ?? '',
     { global: { headers: { Authorization: authorization } } },
   )
   const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -36,10 +43,10 @@ Deno.serve(async (request) => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${Deno.env.get('GROQ_API_KEY')}`,
+      Authorization: `Bearer ${edgeRuntime.Deno.env.get('GROQ_API_KEY')}`,
     },
     body: JSON.stringify({
-      model: Deno.env.get('GROQ_MODEL') || 'llama-3.3-70b-versatile',
+      model: edgeRuntime.Deno.env.get('GROQ_MODEL') || 'llama-3.3-70b-versatile',
       messages: [
         {
           role: 'system',
