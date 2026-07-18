@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import sampleBarrier from '../codex_image.jpeg'
 import { supabase } from './lib/supabase'
 import './App.css'
 import './animations.css'
 import './scene.css'
+import './photo.css'
 
 const statusLabels = { submitted: 'Submitted', under_review: 'Under review', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed' }
 const severityRank = { Urgent: 0, 'High priority': 1, 'Moderate priority': 2, 'Low priority': 3 }
 
 function App() {
   const fileInput = useRef(null)
-  const [photo, setPhoto] = useState(sampleBarrier)
+  const [photo, setPhoto] = useState(null)
   const [photoFile, setPhotoFile] = useState(null)
+  const [photoError, setPhotoError] = useState('')
   const [uploadedPhotoPath, setUploadedPhotoPath] = useState(null)
   const [placeType, setPlaceType] = useState('Metro / transit station')
   const [location, setLocation] = useState('Vyttila Metro Station')
@@ -54,6 +55,7 @@ function App() {
     if (file) {
       setPhoto(URL.createObjectURL(file))
       setPhotoFile(file)
+      setPhotoError('')
       setUploadedPhotoPath(null)
       setAnalysisResult(null)
       setReport(false)
@@ -272,8 +274,9 @@ function App() {
 
   async function uploadEvidence() {
     if (uploadedPhotoPath) return uploadedPhotoPath
-    const imageBlob = photoFile || await fetch(photo).then((response) => response.blob())
-    const imageName = photoFile?.name || 'accesslens-demo-photo.jpeg'
+    if (!photoFile) throw new Error('Please choose a photo before submitting your report.')
+    const imageBlob = photoFile
+    const imageName = photoFile.name
     const photoPath = `${session.user.id}/${crypto.randomUUID()}-${imageName.replace(/[^a-zA-Z0-9._-]/g, '-')}`
     const { error } = await supabase.storage
       .from('report-photos')
@@ -284,6 +287,10 @@ function App() {
   }
 
   async function analyseBarrier() {
+    if (!photoFile) {
+      setPhotoError('Add a clear photo of the barrier before continuing.')
+      return
+    }
     setAnalyzing(true)
     setAnalysisNotice('')
     setReport(false)
@@ -444,11 +451,11 @@ function App() {
           <h2>Show us the barrier</h2>
           <p>Upload a photo of a blocked ramp, broken lift, unsafe crossing, pothole, or dark route.</p>
           <button className="photo-picker" type="button" onClick={() => fileInput.current?.click()}>
-            <img src={photo} alt="Selected report photo" />
-            <span>↻ Change photo</span>
+            {photo ? <><img src={photo} alt="Selected report photo" /><span>↻ Change photo</span></> : <div className="empty-photo"><b>＋</b><strong>Add a photo</strong><small>Tap to choose an image</small></div>}
           </button>
           <input ref={fileInput} type="file" accept="image/*" onChange={selectPhoto} hidden />
           <p className="photo-help">Choose a clear photo that shows the barrier and its surroundings.</p>
+          {photoError && <p className="photo-error">{photoError}</p>}
 
           <label className="field-label" htmlFor="place-type"><span className="step-number">2</span> What kind of place is this?</label>
           <select id="place-type" value={placeType} onChange={(event) => setPlaceType(event.target.value)}>

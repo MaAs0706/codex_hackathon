@@ -1,0 +1,25 @@
+.empty-photo {
+  display: grid;
+  place-content: center;
+  gap: 5px;
+  height: 100%;
+  color: #54746a;
+  background: linear-gradient(135deg, #edf4ee, #e4eee7);
+}
+
+.empty-photo b {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 4px;
+  border-radius: 50%;
+  color: #fff;
+  background: #5a8876;
+  font-size: 21px;
+  font-weight: 400;
+}
+
+.empty-photo strong { font-size: 13px; }
+.empty-photo small { color: #80958b; font-size: 10px; }
+.photo-error { margin: 8px 0 0; color: #b24d3c !important; font-size: 11px !important; }
