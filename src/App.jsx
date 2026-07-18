@@ -23,6 +23,12 @@ function App() {
   const [myReports, setMyReports] = useState([])
   const [reportsLoading, setReportsLoading] = useState(false)
   const [reportsError, setReportsError] = useState('')
+  const [role, setRole] = useState(null)
+  const [adminReports, setAdminReports] = useState([])
+  const [adminLoading, setAdminLoading] = useState(false)
+  const [adminError, setAdminError] = useState('')
+  const [adminEdits, setAdminEdits] = useState({})
+  const [adminSaving, setAdminSaving] = useState(null)
 
   function selectPhoto(event) {
     const file = event.target.files?.[0]
@@ -61,6 +67,16 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (!session) return undefined
+    async function loadRole() {
+      const { data } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
+      setRole(data?.role || 'citizen')
+    }
+    loadRole()
+    return undefined
+  }, [session])
+
+  useEffect(() => {
     if (!session) {
       return undefined
     }
@@ -95,6 +111,39 @@ function App() {
     return () => supabase.removeChannel(channel)
   }, [session])
 
+  useEffect(() => {
+    if (!session || role !== 'admin') return undefined
+
+    async function loadAdminReports() {
+      setAdminLoading(true)
+      setAdminError('')
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*, report_updates(*)')
+        .order('created_at', { ascending: false })
+      if (error) {
+        setAdminError(error.message)
+        setAdminLoading(false)
+        return
+      }
+      const reportsWithPhotos = await Promise.all(data.map(async (item) => {
+        if (!item.photo_path) return item
+        const { data: photo } = await supabase.storage.from('report-photos').createSignedUrl(item.photo_path, 3600)
+        return { ...item, photoUrl: photo?.signedUrl }
+      }))
+      setAdminReports(reportsWithPhotos)
+      setAdminLoading(false)
+    }
+
+    loadAdminReports()
+    const channel = supabase
+      .channel('admin-reports')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, loadAdminReports)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'report_updates' }, loadAdminReports)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [session, role])
+
   async function handleAuth(event) {
     event.preventDefault()
     setAuthBusy(true)
@@ -120,6 +169,34 @@ function App() {
   async function signOut() {
     await supabase.auth.signOut()
     setView('report')
+    setRole(null)
+  }
+
+  function updateAdminEdit(reportId, field, value) {
+    setAdminEdits((current) => ({
+      ...current,
+      [reportId]: { status: current[reportId]?.status || adminReports.find((item) => item.id === reportId)?.status || 'submitted', remark: current[reportId]?.remark || '', [field]: value },
+    }))
+  }
+
+  async function saveAdminUpdate(report) {
+    const edit = adminEdits[report.id] || { status: report.status, remark: '' }
+    if (!edit.remark.trim()) {
+      setAdminError('Add a short remark before publishing an update.')
+      return
+    }
+    setAdminSaving(report.id)
+    setAdminError('')
+    const { error: reportError } = await supabase.from('reports').update({ status: edit.status }).eq('id', report.id)
+    if (reportError) {
+      setAdminError(reportError.message)
+      setAdminSaving(null)
+      return
+    }
+    const { error: updateError } = await supabase.from('report_updates').insert({ report_id: report.id, author_id: session.user.id, status: edit.status, remark: edit.remark.trim() })
+    if (updateError) setAdminError(updateError.message)
+    else setAdminEdits((current) => ({ ...current, [report.id]: { status: edit.status, remark: '' } }))
+    setAdminSaving(null)
   }
 
   async function submitReport() {
@@ -172,7 +249,7 @@ function App() {
           AccessLens
         </button>
         {session ? (
-          <div className="header-actions"><button className="account-button" type="button" onClick={() => setView('dashboard')}>My reports</button><button className="account-button" type="button" onClick={signOut}>Sign out</button></div>
+          <div className="header-actions"><button className="account-button" type="button" onClick={() => setView('dashboard')}>My reports</button>{role === 'admin' && <button className="account-button admin-nav" type="button" onClick={() => setView('admin')}>Admin</button>}<button className="account-button" type="button" onClick={signOut}>Sign out</button></div>
         ) : (
           <button className="account-button" type="button" onClick={() => { setAuthOpen(true); setAuthMessage('') }}>Sign in</button>
         )}
@@ -256,7 +333,7 @@ function App() {
           <article><span>03</span><h3>Act</h3><p>Share a complaint that is ready to send.</p></article>
         </div>
       </section>
-      </> : (
+      </> : view === 'dashboard' ? (
         <section className="dashboard">
           <p className="eyebrow">Citizen dashboard</p>
           <div className="dashboard-heading"><div><h1>My reports</h1><p>Follow each issue from submission to resolution. New updates appear here automatically.</p></div><button className="new-report-button" type="button" onClick={() => setView('report')}>+ New report</button></div>
@@ -269,6 +346,23 @@ function App() {
               return <article className="report-card" key={item.id}>
                 {item.photoUrl ? <img src={item.photoUrl} alt={`Evidence for ${item.issue_category}`} /> : <div className="photo-missing">No photo</div>}
                 <div className="report-card-content"><div className="report-card-top"><div><p className="eyebrow">{item.place_type}</p><h2>{item.location_name}</h2></div><span className={`status-label ${item.status}`}>{item.status.replace('_', ' ')}</span></div><p className="report-category">{item.issue_category} · {item.severity}</p><p className="report-date">Submitted {new Date(item.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</p><div className="updates"><h3>Updates</h3>{updates.length ? updates.map((update) => <div className="update" key={update.id}><span></span><div>{update.status && <strong>{update.status.replace('_', ' ')}</strong>}<p>{update.remark}</p><time>{new Date(update.created_at).toLocaleString()}</time></div></div>) : <p className="waiting-update">No authority update yet. You’ll see it here as soon as there is one.</p>}</div></div>
+              </article>
+            })}
+          </div>
+        </section>
+      ) : (
+        <section className="dashboard admin-dashboard">
+          <p className="eyebrow">Admin dashboard</p>
+          <div className="dashboard-heading"><div><h1>Incoming reports</h1><p>Review citizen reports, update their progress, and publish an action note. Citizens see each update in real time.</p></div><span className="admin-count">{adminReports.length} total</span></div>
+          {adminLoading && <p className="dashboard-note">Loading reports…</p>}
+          {adminError && <p className="dashboard-error">{adminError}</p>}
+          {!adminLoading && !adminError && adminReports.length === 0 && <div className="no-reports"><span>◉</span><h2>No reports yet</h2><p>New reports submitted by citizens will appear here automatically.</p></div>}
+          <div className="reports-list">
+            {adminReports.map((item) => {
+              const edit = adminEdits[item.id] || { status: item.status, remark: '' }
+              return <article className="report-card admin-report-card" key={item.id}>
+                {item.photoUrl ? <img src={item.photoUrl} alt={`Evidence for ${item.issue_category}`} /> : <div className="photo-missing">No photo</div>}
+                <div className="report-card-content"><div className="report-card-top"><div><p className="eyebrow">{item.place_type}</p><h2>{item.location_name}</h2></div><span className={`status-label ${item.status}`}>{item.status.replace('_', ' ')}</span></div><p className="report-category">{item.issue_category} · {item.severity}</p><p className="report-date">{item.accessibility_impact}</p>{item.user_note && <p className="citizen-note">Citizen note: “{item.user_note}”</p>}<div className="admin-update-form"><h3>Publish an update</h3><label htmlFor={`status-${item.id}`}>Status</label><select id={`status-${item.id}`} value={edit.status} onChange={(event) => updateAdminEdit(item.id, 'status', event.target.value)}><option value="submitted">Submitted</option><option value="under_review">Under review</option><option value="in_progress">In progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select><label htmlFor={`remark-${item.id}`}>Remark for the citizen</label><textarea id={`remark-${item.id}`} rows="3" value={edit.remark} onChange={(event) => updateAdminEdit(item.id, 'remark', event.target.value)} placeholder="E.g. A site inspection has been scheduled for tomorrow." /><button type="button" onClick={() => saveAdminUpdate(item)} disabled={adminSaving === item.id}>{adminSaving === item.id ? 'Publishing…' : 'Publish update'}</button></div></div>
               </article>
             })}
           </div>
