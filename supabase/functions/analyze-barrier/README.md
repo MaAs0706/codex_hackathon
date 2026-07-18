@@ -1,6 +1,6 @@
 # AccessLens AI analysis function
 
-This Supabase Edge Function reads a signed-in citizen's private photo, sends it to OpenAI Vision, and returns a structured accessibility report.
+This Supabase Edge Function sends a signed-in citizen's place type, location, and written description to OpenAI and returns a structured formal report. The photo remains private evidence attached to the submitted report; it is not sent to the model.
 
 Before deployment, add these Supabase Edge Function secrets:
 

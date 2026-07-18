@@ -236,9 +236,8 @@ function App() {
       return
     }
     try {
-      const photoPath = await uploadEvidence()
       const { data, error } = await supabase.functions.invoke('analyze-barrier', {
-        body: { photoPath, placeType, location, note },
+        body: { placeType, location, note },
       })
       if (error) {
         const detail = await error.context?.json?.().catch(() => null)
@@ -246,7 +245,7 @@ function App() {
       }
       if (!data?.analysis) throw new Error(data?.error || 'No AI analysis returned')
       setAnalysisResult(data.analysis)
-      setAnalysisSource(data.source || 'OpenAI vision')
+      setAnalysisSource(data.source || 'OpenAI text analysis')
     } catch (error) {
       setAnalysisResult(null)
       setAnalysisSource('Offline mock analysis')

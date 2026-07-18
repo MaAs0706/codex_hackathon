@@ -12,15 +12,6 @@ function json(body: unknown, status = 200) {
   })
 }
 
-function bytesToBase64(bytes: Uint8Array) {
-  let binary = ''
-  const chunkSize = 0x8000
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize))
-  }
-  return btoa(binary)
-}
-
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -36,16 +27,10 @@ Deno.serve(async (request) => {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) return json({ error: 'Invalid user session.' }, 401)
 
-  const { photoPath, placeType, location, note } = await request.json()
-  if (!photoPath || !placeType || !location) return json({ error: 'Photo, place type, and location are required.' }, 400)
-  if (!String(photoPath).startsWith(`${user.id}/`)) return json({ error: 'You can only analyse your own photo.' }, 403)
+  const { placeType, location, note } = await request.json()
+  if (!placeType || !location || !note?.trim()) return json({ error: 'Place type, location, and a description are required.' }, 400)
 
-  const { data: image, error: storageError } = await supabase.storage.from('report-photos').download(photoPath)
-  if (storageError || !image) return json({ error: 'Could not read the selected photo.' }, 400)
-
-  const imageBytes = new Uint8Array(await image.arrayBuffer())
-  const imageDataUrl = `data:${image.type || 'image/jpeg'};base64,${bytesToBase64(imageBytes)}`
-  const prompt = `Analyse this citizen-submitted photo for a public accessibility or civic-safety barrier.\n\nPlace type: ${placeType}\nLocation: ${location}\nCitizen note: ${note || 'None'}\n\nUse only what is clearly visible or supported by the citizen note. Do not identify people or claim a government authority has accepted the issue. If the image is unclear, say so in the impact and recommendation. Produce a concise, actionable report for a citizen complaint.`
+  const prompt = `Turn this citizen-submitted public accessibility or civic-safety report into a concise, formal, actionable report.\n\nPlace type: ${placeType}\nLocation: ${location}\nCitizen description: ${note.trim()}\n\nUse only the information provided. Do not invent visual details, identify people, or claim an authority has accepted the issue. Produce a clear report suitable for a formal civic complaint.`
 
   const openaiResponse = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -58,10 +43,7 @@ Deno.serve(async (request) => {
       store: false,
       input: [{
         role: 'user',
-        content: [
-          { type: 'input_text', text: prompt },
-          { type: 'input_image', image_url: imageDataUrl, detail: 'low' },
-        ],
+        content: [{ type: 'input_text', text: prompt }],
       }],
       text: {
         format: {
