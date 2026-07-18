@@ -27,7 +27,7 @@ function App() {
   const [analysisSource, setAnalysisSource] = useState('Offline mock analysis')
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisNotice, setAnalysisNotice] = useState('')
-  const [view, setView] = useState('report')
+  const [view, setView] = useState('home')
   const [myReports, setMyReports] = useState([])
   const [reportsLoading, setReportsLoading] = useState(false)
   const [reportsError, setReportsError] = useState('')
@@ -253,7 +253,7 @@ function App() {
 
   async function signOut() {
     await supabase.auth.signOut()
-    setView('report')
+    setView('home')
     setRole(null)
   }
 
@@ -386,21 +386,43 @@ function App() {
   return (
     <main>
       <header className="site-header">
-        <button className="brand" type="button" onClick={() => setView('report')} aria-label="AccessLens home">
+        <button className="brand" type="button" onClick={() => setView('home')} aria-label="AccessLens home">
           <span className="brand-mark">◉</span>
           AccessLens
         </button>
         {session ? (
-          <div className="header-actions"><button className="account-button" type="button" onClick={() => setView('public')}>Public reports</button><button className="account-button" type="button" onClick={() => setView('dashboard')}>My reports</button>{role === 'admin' && <button className="account-button admin-nav" type="button" onClick={() => setView('admin')}>Admin</button>}<button className="account-button" type="button" onClick={signOut}>Sign out</button></div>
+          <div className="header-actions"><button className="account-button nav-link" type="button" onClick={() => setView('public')}>Public reports</button><button className="account-button nav-link" type="button" onClick={() => setView('dashboard')}>My reports</button>{role === 'admin' && <button className="account-button admin-nav" type="button" onClick={() => setView('admin')}>Admin</button>}<button className="account-button" type="button" onClick={signOut}>Sign out</button></div>
         ) : (
-          <div className="header-actions"><button className="account-button" type="button" onClick={() => setView('public')}>Public reports</button><button className="account-button" type="button" onClick={() => { setAuthOpen(true); setAuthMessage('') }}>Sign in</button></div>
+          <div className="header-actions"><button className="account-button nav-link" type="button" onClick={() => setView('public')}>Public reports</button><button className="account-button" type="button" onClick={() => { setAuthOpen(true); setAuthMessage('') }}>Sign in</button></div>
         )}
       </header>
 
-      {view === 'report' ? <>
-      <section className="hero" id="top">
+      {view === 'home' ? <>
+        <section className="home-hero">
+          <div className="hero-copy">
+            <p className="eyebrow">Civic action, made accessible</p>
+            <h1>Make every street<br /><em>work for everyone.</em></h1>
+            <p className="hero-lede">AccessLens turns a barrier you can see into a report that public teams can act on — in minutes, not paperwork.</p>
+            <div className="hero-buttons"><button className="primary-cta" type="button" onClick={() => setView('report')}>Report a barrier <span>→</span></button><button className="secondary-cta" type="button" onClick={() => setView('public')}>Explore public reports</button></div>
+            <div className="hero-trust"><span>✦</span><p>Private evidence. Public accountability.</p></div>
+          </div>
+          <div className="hero-visual" aria-label="Example AccessLens report journey">
+            <div className="orbit orbit-one"></div><div className="orbit orbit-two"></div>
+            <div className="visual-card visual-photo"><span className="mini-label">Citizen report</span><div className="photo-illustration"><span>⌁</span></div><strong>Unsafe crossing</strong><small>Vyttila Junction</small></div>
+            <div className="visual-card visual-analysis"><span className="analysis-spark">✦</span><span className="mini-label">AccessLens analysis</span><strong>High priority</strong><p>Unsafe pedestrian route</p><div className="progress-line"><i></i></div></div>
+            <div className="visual-card visual-update"><span className="update-dot"></span><div><span className="mini-label">Authority update</span><strong>Inspection scheduled</strong></div></div>
+          </div>
+        </section>
+        <section className="home-proof">
+          <p className="eyebrow">A simple path to action</p>
+          <div className="proof-heading"><h2>From everyday obstacle<br />to visible progress.</h2><p>No civic jargon. No guessing where to send a complaint. Just show what happened and keep track of what changes.</p></div>
+          <div className="home-steps"><article><span>01</span><div className="step-icon">◌</div><h3>Show the barrier</h3><p>Share a photo, place, and a little context in your own words.</p></article><article><span>02</span><div className="step-icon">✦</div><h3>Make it clear</h3><p>AccessLens shapes the details into a formal, actionable report.</p></article><article><span>03</span><div className="step-icon">↗</div><h3>Follow the action</h3><p>See public progress and authority updates as they happen.</p></article></div>
+        </section>
+        <section className="home-banner"><div><p className="eyebrow">Built for public places</p><h2>Better access begins with being heard.</h2></div><button className="primary-cta" type="button" onClick={() => setView('report')}>Start a report <span>→</span></button></section>
+      </> : view === 'report' ? <>
+      <section className="report-hero" id="top">
         <p className="eyebrow">Make access visible</p>
-        <h1>One photo can start<br />meaningful action.</h1>
+        <h1>Report a barrier.</h1>
         <p className="intro">Report barriers at transit stations in a few clear steps. AccessLens turns what you see into a ready-to-send civic complaint.</p>
       </section>
 
