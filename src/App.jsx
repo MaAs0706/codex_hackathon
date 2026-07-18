@@ -389,7 +389,6 @@ function App() {
     <main>
       <header className="site-header">
         <button className="brand" type="button" onClick={() => setView('home')} aria-label="AccessLens home">
-          <span className="brand-mark">◉</span>
           AccessLens
         </button>
         {session ? (
