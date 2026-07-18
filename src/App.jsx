@@ -7,6 +7,7 @@ function App() {
   const fileInput = useRef(null)
   const [photo, setPhoto] = useState(sampleBarrier)
   const [photoFile, setPhotoFile] = useState(null)
+  const [uploadedPhotoPath, setUploadedPhotoPath] = useState(null)
   const [placeType, setPlaceType] = useState('Metro / transit station')
   const [location, setLocation] = useState('Vyttila Metro Station')
   const [note, setNote] = useState('')
@@ -19,6 +20,10 @@ function App() {
   const [authMessage, setAuthMessage] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
   const [submitState, setSubmitState] = useState({ status: 'idle', message: '' })
+  const [analysisResult, setAnalysisResult] = useState(null)
+  const [analysisSource, setAnalysisSource] = useState('Offline mock analysis')
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analysisNotice, setAnalysisNotice] = useState('')
   const [view, setView] = useState('report')
   const [myReports, setMyReports] = useState([])
   const [reportsLoading, setReportsLoading] = useState(false)
@@ -35,6 +40,9 @@ function App() {
     if (file) {
       setPhoto(URL.createObjectURL(file))
       setPhotoFile(file)
+      setUploadedPhotoPath(null)
+      setAnalysisResult(null)
+      setReport(false)
     }
   }
 
@@ -58,7 +66,8 @@ function App() {
       category: 'Accessibility barrier', severity: 'High priority', affected: 'People with disabilities, older adults, families, and visitors with mobility needs', impact: 'The barrier restricts equal access to an essential public service or facility.', action: 'Remove the barrier promptly and provide a clearly marked accessible alternative while permanent work is completed.',
     },
   }
-  const currentAnalysis = mockAnalyses[placeType]
+  const mockAnalysis = mockAnalyses[placeType]
+  const currentAnalysis = analysisResult || mockAnalysis
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -172,6 +181,48 @@ function App() {
     setRole(null)
   }
 
+  async function uploadEvidence() {
+    if (uploadedPhotoPath) return uploadedPhotoPath
+    const imageBlob = photoFile || await fetch(photo).then((response) => response.blob())
+    const imageName = photoFile?.name || 'accesslens-demo-photo.jpeg'
+    const photoPath = `${session.user.id}/${crypto.randomUUID()}-${imageName.replace(/[^a-zA-Z0-9._-]/g, '-')}`
+    const { error } = await supabase.storage
+      .from('report-photos')
+      .upload(photoPath, imageBlob, { contentType: imageBlob.type || 'image/jpeg' })
+    if (error) throw error
+    setUploadedPhotoPath(photoPath)
+    return photoPath
+  }
+
+  async function analyseBarrier() {
+    setAnalyzing(true)
+    setAnalysisNotice('')
+    setReport(false)
+    if (!session) {
+      setAnalysisResult(null)
+      setAnalysisSource('Offline mock analysis')
+      setAnalysisNotice('Sign in to use AI vision. Showing the offline demo analysis instead.')
+      setReport(true)
+      setAnalyzing(false)
+      return
+    }
+    try {
+      const photoPath = await uploadEvidence()
+      const { data, error } = await supabase.functions.invoke('analyze-barrier', {
+        body: { photoPath, placeType, location, note },
+      })
+      if (error || !data?.analysis) throw error || new Error('No AI analysis returned')
+      setAnalysisResult(data.analysis)
+      setAnalysisSource(data.source || 'OpenAI vision')
+    } catch {
+      setAnalysisResult(null)
+      setAnalysisSource('Offline mock analysis')
+      setAnalysisNotice('AI analysis is unavailable right now, so we prepared a reliable demo report instead.')
+    }
+    setReport(true)
+    setAnalyzing(false)
+  }
+
   function updateAdminEdit(reportId, field, value) {
     setAdminEdits((current) => ({
       ...current,
@@ -208,13 +259,7 @@ function App() {
     }
     setSubmitState({ status: 'loading', message: '' })
     try {
-      const imageBlob = photoFile || await fetch(photo).then((response) => response.blob())
-      const imageName = photoFile?.name || 'accesslens-demo-photo.jpeg'
-      const photoPath = `${session.user.id}/${crypto.randomUUID()}-${imageName.replace(/[^a-zA-Z0-9._-]/g, '-')}`
-      const { error: uploadError } = await supabase.storage
-        .from('report-photos')
-        .upload(photoPath, imageBlob, { contentType: imageBlob.type || 'image/jpeg' })
-      if (uploadError) throw uploadError
+      const photoPath = await uploadEvidence()
 
       const { data, error: reportError } = await supabase
         .from('reports')
@@ -229,7 +274,7 @@ function App() {
           affected_people: currentAnalysis.affected,
           accessibility_impact: currentAnalysis.impact,
           recommended_action: currentAnalysis.action,
-          ai_analysis: { source: 'offline mock analysis', ...currentAnalysis },
+          ai_analysis: { source: analysisSource, ...currentAnalysis },
         })
         .select('id')
         .single()
@@ -289,7 +334,7 @@ function App() {
 
           <label className="field-label" htmlFor="note"><span className="step-number">4</span> Anything else? <em>Optional</em></label>
           <textarea id="note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="E.g. The ramp has been blocked since morning" rows="3" />
-          <button className="analyse-btn" type="button" onClick={() => setReport(true)}>Analyse barrier <span>→</span></button>
+          <button className="analyse-btn" type="button" onClick={analyseBarrier} disabled={analyzing}>{analyzing ? 'Analysing…' : 'Analyse barrier'} <span>→</span></button>
         </div>
 
         <div className="report-placeholder">
@@ -304,7 +349,7 @@ function App() {
             <div className="report-content" aria-live="polite">
               <div className="report-heading">
                 <div><p className="eyebrow">Accessibility report</p><h2>{location || 'Selected location'}</h2></div>
-                <span className="status">● Analysis complete</span>
+                <span className="status">● {analysisSource}</span>
               </div>
               <div className="report-grid">
                 <article><p>Issue category</p><h3>{currentAnalysis.category}</h3></article>
@@ -314,6 +359,7 @@ function App() {
               </div>
               <section className="recommendation"><span>✦</span><div><p>Recommended action</p><strong>{currentAnalysis.action}</strong></div></section>
               {note && <p className="note-recorded">Your note has been included in the report.</p>}
+              {analysisNotice && <p className="analysis-notice">{analysisNotice}</p>}
               <section className="submission-box">
                 <div><p className="eyebrow">Ready to send</p><h3>Submit this report</h3><p>Your photo and report will be shared privately with the AccessLens response team.</p></div>
                 <button type="button" onClick={submitReport} disabled={submitState.status === 'loading'}>{submitState.status === 'loading' ? 'Submitting…' : 'Submit report →'}</button>
