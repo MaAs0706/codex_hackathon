@@ -1,6 +1,16 @@
+import { useRef, useState } from 'react'
+import sampleBarrier from '../codex_image.jpeg'
 import './App.css'
 
 function App() {
+  const fileInput = useRef(null)
+  const [photo, setPhoto] = useState(sampleBarrier)
+
+  function selectPhoto(event) {
+    const file = event.target.files?.[0]
+    if (file) setPhoto(URL.createObjectURL(file))
+  }
+
   return (
     <main>
       <header className="site-header">
@@ -20,10 +30,14 @@ function App() {
       <section className="workspace" aria-label="Accessibility reporting workspace">
         <div className="capture-placeholder">
           <span className="step-number">1</span>
-          <div className="capture-icon">⌁</div>
           <h2>Show us the barrier</h2>
-          <p>Upload a photo of a blocked ramp, broken lift, or unsafe crossing.</p>
-          <span className="coming-soon">Photo upload · Phase 2</span>
+          <p>Upload a photo of a blocked ramp, broken lift, unsafe crossing, pothole, or dark route.</p>
+          <button className="photo-picker" type="button" onClick={() => fileInput.current?.click()}>
+            <img src={photo} alt="Selected report photo" />
+            <span>↻ Change photo</span>
+          </button>
+          <input ref={fileInput} type="file" accept="image/*" onChange={selectPhoto} hidden />
+          <p className="photo-help">Choose a clear photo that shows the barrier and its surroundings.</p>
         </div>
 
         <div className="report-placeholder">
