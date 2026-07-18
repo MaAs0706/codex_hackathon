@@ -87,9 +87,10 @@ Deno.serve(async (request) => {
   })
 
   if (!openaiResponse.ok) {
-    const error = await openaiResponse.text()
-    console.error(error)
-    return json({ error: 'AI analysis is currently unavailable.' }, 502)
+    const error = await openaiResponse.json().catch(() => null)
+    const message = error?.error?.message || 'The OpenAI request was rejected.'
+    console.error({ status: openaiResponse.status, message })
+    return json({ error: `OpenAI request failed (${openaiResponse.status}): ${message}` }, 502)
   }
 
   const response = await openaiResponse.json()

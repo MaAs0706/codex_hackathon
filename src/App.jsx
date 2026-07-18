@@ -66,7 +66,36 @@ function App() {
       category: 'Accessibility barrier', severity: 'High priority', affected: 'People with disabilities, older adults, families, and visitors with mobility needs', impact: 'The barrier restricts equal access to an essential public service or facility.', action: 'Remove the barrier promptly and provide a clearly marked accessible alternative while permanent work is completed.',
     },
   }
-  const mockAnalysis = mockAnalyses[placeType]
+  const noteText = note.trim()
+  const noteLower = noteText.toLowerCase()
+  const descriptionOverrides = [
+    {
+      matches: ['dark', 'lighting', 'light is not working', 'night'],
+      analysis: { category: 'Poorly lit public route', severity: 'High priority', affected: 'People walking at night, women, older adults, children, and people with low vision', impact: 'Poor lighting makes the route difficult to navigate and increases the risk of falls, injury, and personal-safety concerns after dark.', action: 'Repair or install lighting immediately, inspect the route at night, and keep the path clear and visible until a permanent fix is completed.' },
+    },
+    {
+      matches: ['pothole', 'hole in the road', 'damaged road', 'broken footpath'],
+      analysis: { category: 'Dangerous road or footpath defect', severity: 'High priority', affected: 'Pedestrians, wheelchair users, cyclists, children, older adults, and people using mobility aids', impact: 'The damaged surface creates a trip and fall hazard and can force pedestrians or wheelchair users into traffic.', action: 'Mark and repair the defect urgently, restore an even accessible surface, and inspect nearby footpaths for related damage.' },
+    },
+    {
+      matches: ['lift', 'elevator', 'escalator'],
+      analysis: { category: 'Broken or unavailable accessible lift', severity: 'High priority', affected: 'Wheelchair users, people with limited mobility, older adults, parents with prams, and passengers carrying luggage', impact: 'Without a working lift, people who cannot safely use stairs are prevented from accessing the facility independently.', action: 'Restore lift service urgently, display a clear accessible alternative, and provide staff support until the repair is complete.' },
+    },
+    {
+      matches: ['ramp', 'blocked', 'obstruction'],
+      analysis: { category: 'Blocked accessible route', severity: 'High priority', affected: 'Wheelchair users, people using walkers, parents with prams, older adults, and people with temporary injuries', impact: 'An obstruction on the accessible route prevents independent and safe entry or movement through this public place.', action: 'Clear the obstruction immediately, maintain the accessible route, and add visible markings or daily checks to prevent recurrence.' },
+    },
+    {
+      matches: ['crossing', 'zebra', 'traffic', 'road crossing'],
+      analysis: { category: 'Unsafe pedestrian crossing', severity: 'High priority', affected: 'Pedestrians, children, older adults, wheelchair users, and people with low vision', impact: 'An unsafe crossing exposes people to vehicle traffic and makes a necessary public route unsafe or inaccessible.', action: 'Review the crossing urgently, add accessible signals and markings, and introduce traffic-calming measures where needed.' },
+    },
+  ]
+  const override = descriptionOverrides.find((item) => item.matches.some((match) => noteLower.includes(match)))
+  const mockAnalysis = override
+    ? { ...mockAnalyses[placeType], ...override.analysis }
+    : noteText
+      ? { ...mockAnalyses[placeType], impact: `${mockAnalyses[placeType].impact} The citizen additionally reports: “${noteText.slice(0, 180)}”.` }
+      : mockAnalyses[placeType]
   const currentAnalysis = analysisResult || mockAnalysis
 
   useEffect(() => {
@@ -211,13 +240,17 @@ function App() {
       const { data, error } = await supabase.functions.invoke('analyze-barrier', {
         body: { photoPath, placeType, location, note },
       })
-      if (error || !data?.analysis) throw error || new Error('No AI analysis returned')
+      if (error) {
+        const detail = await error.context?.json?.().catch(() => null)
+        throw new Error(detail?.error || error.message)
+      }
+      if (!data?.analysis) throw new Error(data?.error || 'No AI analysis returned')
       setAnalysisResult(data.analysis)
       setAnalysisSource(data.source || 'OpenAI vision')
-    } catch {
+    } catch (error) {
       setAnalysisResult(null)
       setAnalysisSource('Offline mock analysis')
-      setAnalysisNotice('AI analysis is unavailable right now, so we prepared a reliable demo report instead.')
+      setAnalysisNotice(`${error.message || 'AI analysis is unavailable right now.'} Showing the demo report instead.`)
     }
     setReport(true)
     setAnalyzing(false)
