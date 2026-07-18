@@ -7,6 +7,7 @@ import './photo.css'
 import './darkmode.css'
 import './night-scene.css'
 import './theme-lamp.css'
+import './routing.css'
 
 const statusLabels = { submitted: 'Submitted', under_review: 'Under review', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed' }
 const severityRank = { Urgent: 0, 'High priority': 1, 'Moderate priority': 2, 'Low priority': 3 }
@@ -68,22 +69,22 @@ function App() {
 
   const mockAnalyses = {
     'Metro / transit station': {
-      category: 'Blocked step-free route', severity: 'High priority', affected: 'Wheelchair users, people using walkers, parents with prams, and older adults', impact: 'The step-free route is obstructed, leaving many commuters unable to enter or exit safely.', action: 'Clear the obstruction immediately and add visible “Keep ramp clear” markings with daily accessibility checks.',
+      category: 'Blocked step-free route', severity: 'High priority', department: 'Metro station operations and accessibility team', affected: 'Wheelchair users, people using walkers, parents with prams, and older adults', impact: 'The step-free route is obstructed, leaving many commuters unable to enter or exit safely.', action: 'Clear the obstruction immediately and add visible “Keep ramp clear” markings with daily accessibility checks.',
     },
     'Hospital or clinic': {
-      category: 'Unsafe accessible entrance', severity: 'High priority', affected: 'Patients with mobility needs, older adults, visitors with prams, and emergency visitors', impact: 'The barrier can delay or prevent safe access to essential healthcare services.', action: 'Restore an accessible entrance immediately and place temporary, clearly marked assistance signage until repaired.',
+      category: 'Unsafe accessible entrance', severity: 'High priority', department: 'Hospital facilities and patient-access team', affected: 'Patients with mobility needs, older adults, visitors with prams, and emergency visitors', impact: 'The barrier can delay or prevent safe access to essential healthcare services.', action: 'Restore an accessible entrance immediately and place temporary, clearly marked assistance signage until repaired.',
     },
     'School or college': {
-      category: 'Inaccessible campus route', severity: 'High priority', affected: 'Students, staff, visitors, and parents with mobility needs', impact: 'The barrier prevents equal and independent access to learning spaces and services.', action: 'Make the route step-free, clear the obstruction, and include it in the campus accessibility audit.',
+      category: 'Inaccessible campus route', severity: 'High priority', department: 'Campus administration and facilities team', affected: 'Students, staff, visitors, and parents with mobility needs', impact: 'The barrier prevents equal and independent access to learning spaces and services.', action: 'Make the route step-free, clear the obstruction, and include it in the campus accessibility audit.',
     },
     'Road, footpath, or crossing': {
-      category: 'Unsafe pedestrian route', severity: 'High priority', affected: 'Pedestrians, wheelchair users, children, older adults, and people walking at night', impact: 'The damaged or obstructed route forces people into traffic and raises the risk of falls or injury.', action: 'Repair the route, add an accessible crossing, and install lighting or barriers where the walking path is unsafe.',
+      category: 'Unsafe pedestrian route', severity: 'High priority', department: 'Municipal engineering and road safety department', affected: 'Pedestrians, wheelchair users, children, older adults, and people walking at night', impact: 'The damaged or obstructed route forces people into traffic and raises the risk of falls or injury.', action: 'Repair the route, add an accessible crossing, and install lighting or barriers where the walking path is unsafe.',
     },
     'Park or public space': {
-      category: 'Public space access barrier', severity: 'Moderate priority', affected: 'Wheelchair users, families, older adults, and people with limited mobility', impact: 'The space cannot be used independently and safely by everyone in the community.', action: 'Clear the access route and add a maintained, step-free path with clear wayfinding.',
+      category: 'Public space access barrier', severity: 'Moderate priority', department: 'Municipal parks and public-space maintenance team', affected: 'Wheelchair users, families, older adults, and people with limited mobility', impact: 'The space cannot be used independently and safely by everyone in the community.', action: 'Clear the access route and add a maintained, step-free path with clear wayfinding.',
     },
     'Other public building': {
-      category: 'Accessibility barrier', severity: 'High priority', affected: 'People with disabilities, older adults, families, and visitors with mobility needs', impact: 'The barrier restricts equal access to an essential public service or facility.', action: 'Remove the barrier promptly and provide a clearly marked accessible alternative while permanent work is completed.',
+      category: 'Accessibility barrier', severity: 'High priority', department: 'Building management and local accessibility cell', affected: 'People with disabilities, older adults, families, and visitors with mobility needs', impact: 'The barrier restricts equal access to an essential public service or facility.', action: 'Remove the barrier promptly and provide a clearly marked accessible alternative while permanent work is completed.',
     },
   }
   const noteText = note.trim()
@@ -91,23 +92,23 @@ function App() {
   const descriptionOverrides = [
     {
       matches: ['dark', 'lighting', 'light is not working', 'night'],
-      analysis: { category: 'Poorly lit public route', severity: 'High priority', affected: 'People walking at night, women, older adults, children, and people with low vision', impact: 'Poor lighting makes the route difficult to navigate and increases the risk of falls, injury, and personal-safety concerns after dark.', action: 'Repair or install lighting immediately, inspect the route at night, and keep the path clear and visible until a permanent fix is completed.' },
+      analysis: { category: 'Poorly lit public route', severity: 'High priority', department: 'Municipal electrical maintenance and road safety department', affected: 'People walking at night, women, older adults, children, and people with low vision', impact: 'Poor lighting makes the route difficult to navigate and increases the risk of falls, injury, and personal-safety concerns after dark.', action: 'Repair or install lighting immediately, inspect the route at night, and keep the path clear and visible until a permanent fix is completed.' },
     },
     {
       matches: ['pothole', 'hole in the road', 'damaged road', 'broken footpath'],
-      analysis: { category: 'Dangerous road or footpath defect', severity: 'High priority', affected: 'Pedestrians, wheelchair users, cyclists, children, older adults, and people using mobility aids', impact: 'The damaged surface creates a trip and fall hazard and can force pedestrians or wheelchair users into traffic.', action: 'Mark and repair the defect urgently, restore an even accessible surface, and inspect nearby footpaths for related damage.' },
+      analysis: { category: 'Dangerous road or footpath defect', severity: 'High priority', department: 'Municipal engineering and road maintenance department', affected: 'Pedestrians, wheelchair users, cyclists, children, older adults, and people using mobility aids', impact: 'The damaged surface creates a trip and fall hazard and can force pedestrians or wheelchair users into traffic.', action: 'Mark and repair the defect urgently, restore an even accessible surface, and inspect nearby footpaths for related damage.' },
     },
     {
       matches: ['lift', 'elevator', 'escalator'],
-      analysis: { category: 'Broken or unavailable accessible lift', severity: 'High priority', affected: 'Wheelchair users, people with limited mobility, older adults, parents with prams, and passengers carrying luggage', impact: 'Without a working lift, people who cannot safely use stairs are prevented from accessing the facility independently.', action: 'Restore lift service urgently, display a clear accessible alternative, and provide staff support until the repair is complete.' },
+      analysis: { category: 'Broken or unavailable accessible lift', severity: 'High priority', department: 'Facility operations and elevator maintenance team', affected: 'Wheelchair users, people with limited mobility, older adults, parents with prams, and passengers carrying luggage', impact: 'Without a working lift, people who cannot safely use stairs are prevented from accessing the facility independently.', action: 'Restore lift service urgently, display a clear accessible alternative, and provide staff support until the repair is complete.' },
     },
     {
       matches: ['ramp', 'blocked', 'obstruction'],
-      analysis: { category: 'Blocked accessible route', severity: 'High priority', affected: 'Wheelchair users, people using walkers, parents with prams, older adults, and people with temporary injuries', impact: 'An obstruction on the accessible route prevents independent and safe entry or movement through this public place.', action: 'Clear the obstruction immediately, maintain the accessible route, and add visible markings or daily checks to prevent recurrence.' },
+      analysis: { category: 'Blocked accessible route', severity: 'High priority', department: 'Local facility operations and accessibility team', affected: 'Wheelchair users, people using walkers, parents with prams, older adults, and people with temporary injuries', impact: 'An obstruction on the accessible route prevents independent and safe entry or movement through this public place.', action: 'Clear the obstruction immediately, maintain the accessible route, and add visible markings or daily checks to prevent recurrence.' },
     },
     {
       matches: ['crossing', 'zebra', 'traffic', 'road crossing'],
-      analysis: { category: 'Unsafe pedestrian crossing', severity: 'High priority', affected: 'Pedestrians, children, older adults, wheelchair users, and people with low vision', impact: 'An unsafe crossing exposes people to vehicle traffic and makes a necessary public route unsafe or inaccessible.', action: 'Review the crossing urgently, add accessible signals and markings, and introduce traffic-calming measures where needed.' },
+      analysis: { category: 'Unsafe pedestrian crossing', severity: 'High priority', department: 'Traffic police and municipal road safety department', affected: 'Pedestrians, children, older adults, wheelchair users, and people with low vision', impact: 'An unsafe crossing exposes people to vehicle traffic and makes a necessary public route unsafe or inaccessible.', action: 'Review the crossing urgently, add accessible signals and markings, and introduce traffic-calming measures where needed.' },
     },
   ]
   const override = descriptionOverrides.find((item) => item.matches.some((match) => noteLower.includes(match)))
@@ -117,7 +118,7 @@ function App() {
       ? { ...mockAnalyses[placeType], impact: `${mockAnalyses[placeType].impact} The citizen additionally reports: “${noteText.slice(0, 180)}”.` }
       : mockAnalyses[placeType]
   const currentAnalysis = analysisResult || mockAnalysis
-  const complaintDraft = `Subject: Action requested — ${currentAnalysis.category} at ${location || 'public location'}\n\nDear Civic Accessibility Team,\n\nI am reporting a ${currentAnalysis.category.toLowerCase()} at ${location || 'this public location'} (${placeType}).\n\nAccessibility and safety impact: ${currentAnalysis.impact}\n\nPeople affected: ${currentAnalysis.affected}\n\nRequested action: ${currentAnalysis.action}${noteText ? `\n\nAdditional information: ${noteText}` : ''}\n\nPlease acknowledge this report and share the next action planned.\n\nSincerely,\nA concerned citizen`
+  const complaintDraft = `To: ${currentAnalysis.department || 'Relevant civic department'}\nSubject: Action requested — ${currentAnalysis.category} at ${location || 'public location'}\n\nDear Civic Accessibility Team,\n\nI am reporting a ${currentAnalysis.category.toLowerCase()} at ${location || 'this public location'} (${placeType}).\n\nSuggested department: ${currentAnalysis.department || 'Relevant civic department'}\n\nAccessibility and safety impact: ${currentAnalysis.impact}\n\nPeople affected: ${currentAnalysis.affected}\n\nRequested action: ${currentAnalysis.action}${noteText ? `\n\nAdditional information: ${noteText}` : ''}\n\nPlease acknowledge this report and share the next action planned.\n\nSincerely,\nA concerned citizen`
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -384,6 +385,7 @@ function App() {
           affected_people: currentAnalysis.affected,
           accessibility_impact: currentAnalysis.impact,
           recommended_action: currentAnalysis.action,
+          target_department: currentAnalysis.department || null,
           ai_analysis: { source: analysisSource, ...currentAnalysis },
         })
         .select('id')
@@ -507,6 +509,7 @@ function App() {
                 <article><p>Who is affected</p><h3>{currentAnalysis.affected}</h3></article>
                 <article><p>Accessibility impact</p><h3>{currentAnalysis.impact}</h3></article>
               </div>
+              <section className="department-route"><span>↗</span><div><p>Suggested department</p><strong>{currentAnalysis.department || 'Relevant civic department'}</strong><small>Based on the place, location, and description provided.</small></div></section>
               <section className="recommendation"><span>✦</span><div><p>Recommended action</p><strong>{currentAnalysis.action}</strong></div></section>
               {note && <p className="note-recorded">Your note has been included in the report.</p>}
               {analysisNotice && <p className="analysis-notice">{analysisNotice}</p>}

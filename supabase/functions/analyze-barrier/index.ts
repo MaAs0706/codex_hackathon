@@ -37,7 +37,7 @@ edgeRuntime.Deno.serve(async (request) => {
   const { placeType, location, note } = await request.json()
   if (!placeType || !location || !note?.trim()) return json({ error: 'Place type, location, and a description are required.' }, 400)
 
-  const prompt = `Turn this citizen-submitted public accessibility or civic-safety report into a concise, formal, actionable report.\n\nPlace type: ${placeType}\nLocation: ${location}\nCitizen description: ${note.trim()}\n\nUse only the information provided. Do not invent visual details, identify people, or claim an authority has accepted the issue. Produce a clear report suitable for a formal civic complaint.`
+  const prompt = `Turn this citizen-submitted public accessibility or civic-safety report into a concise, formal, actionable report.\n\nPlace type: ${placeType}\nLocation: ${location}\nCitizen description: ${note.trim()}\n\nChoose the most appropriate department, authority, or facilities team to receive the complaint. Use a practical department name rather than inventing a specific officer or claiming it has been accepted. Use only the information provided. Do not invent visual details or identify people. Produce a clear report suitable for a formal civic complaint.`
 
   const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -50,7 +50,7 @@ edgeRuntime.Deno.serve(async (request) => {
       messages: [
         {
           role: 'system',
-          content: 'Return only valid JSON with these exact string keys: category, severity, affected, impact, action, evidence. Severity must be one of: Low priority, Moderate priority, High priority, Urgent.',
+          content: 'Return only valid JSON with these exact string keys: category, severity, department, affected, impact, action, evidence. The department value must name the most suitable civic department, authority, or facility team to receive the complaint. Severity must be one of: Low priority, Moderate priority, High priority, Urgent.',
         },
         { role: 'user', content: prompt },
       ],

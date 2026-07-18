@@ -25,6 +25,7 @@ create table public.reports (
   affected_people text not null,
   accessibility_impact text not null,
   recommended_action text not null,
+  target_department text,
   ai_analysis jsonb,
   status public.report_status not null default 'submitted',
   created_at timestamptz not null default now(),

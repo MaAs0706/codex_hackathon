@@ -16,7 +16,8 @@ select
   recommended_action,
   status,
   created_at,
-  updated_at
+  updated_at,
+  target_department
 from public.reports;
 
 create or replace view public.public_report_updates
