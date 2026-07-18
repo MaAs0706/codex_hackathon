@@ -1,6 +1,9 @@
 /* A small, continuously moving city scene for the landing page. */
 .metro-train { animation: metro-loop 6.5s linear infinite; }
 
+/* Keep the authority update separate from the moving street scene. */
+.visual-update { top: 18px; right: 12px; bottom: auto; left: auto; transform: rotate(2deg); }
+
 .pothole { position: absolute; z-index: 6; bottom: 25px; left: 58%; width: 38px; height: 13px; border: 3px solid #b17a59; border-radius: 50%; background: #193c34; box-shadow: inset 0 3px 4px #08231d, 0 2px 0 #f5d6bd; }
 .pothole::before { content: ''; position: absolute; inset: 3px 7px; border-radius: 50%; background: #0b2922; }
 .pothole::after { content: '!'; position: absolute; top: -25px; left: 13px; color: #dd6c4f; font: 800 15px 'DM Mono', monospace; animation: hazard-pulse 1.1s ease-in-out infinite alternate; }
